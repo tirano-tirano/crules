@@ -1,6 +1,11 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
-require "crules"
+require "bundler/setup"
+require "thor"
+require "pastel"
+
+require_relative "../lib/crules/cli"
+require_relative "../lib/crules/version"
 
 Crules::CLI.start(ARGV) 
