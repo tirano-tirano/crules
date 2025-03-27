@@ -34,4 +34,46 @@ Thumbs.db
 
 # Project specific
 .cursor/rules/errors/*.mdc
-!errors/error_logging_guide.mdc 
+!errors/error_logging_guide.mdc
+
+# Logs
+*.log
+/logs/
+
+# Local development
+.env
+.env.*
+!.env.example
+
+# Build artifacts
+/build/
+/dist/
+/out/
+
+# Temporary files
+*.tmp
+*.temp
+*~
+
+# Ruby specific
+.bundle/
+vendor/
+.ruby-version
+.ruby-gemset
+
+# Test coverage
+/coverage/
+/test/tmp/
+
+# Documentation
+/doc/
+/docs/_build/
+
+# Package manager
+package-lock.json
+yarn.lock
+
+# macOS
+.AppleDouble
+.LSOverride
+._* 
