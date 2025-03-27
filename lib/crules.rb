@@ -2,7 +2,6 @@
 
 require "thor"
 require "fileutils"
-require "colorize"
 require "json"
 
 require_relative "crules/version"

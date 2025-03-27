@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "pastel"
+
 module Crules
   class CLI < Thor
     package_name "crules"
@@ -8,6 +10,11 @@ module Crules
       "flutter" => "Flutterプロジェクト用のテンプレート",
       "default" => "汎用的なテンプレート"
     }.freeze
+
+    def initialize(*args)
+      super
+      @pastel = Pastel.new
+    end
 
     desc "version", "バージョン情報を表示"
     def version
@@ -21,11 +28,11 @@ module Crules
     method_option :framework, type: :string, default: "default",
                  desc: "使用するフレームワークを指定 (flutter, default)"
     def init
-      puts "🚀 Cursorルールの初期化を開始します...".green
+      puts @pastel.green("🚀 Cursorルールの初期化を開始します...")
 
       framework = options[:framework]
       unless AVAILABLE_FRAMEWORKS.key?(framework)
-        puts "❌ 無効なフレームワークです: #{framework}".red
+        puts @pastel.red("❌ 無効なフレームワークです: #{framework}")
         puts "利用可能なフレームワーク:"
         AVAILABLE_FRAMEWORKS.each do |name, desc|
           puts "  - #{name}: #{desc}"
@@ -33,12 +40,12 @@ module Crules
         exit 1
       end
 
-      puts "📦 フレームワーク: #{framework} (#{AVAILABLE_FRAMEWORKS[framework]})".green
+      puts @pastel.green("📦 フレームワーク: #{framework} (#{AVAILABLE_FRAMEWORKS[framework]})")
 
       create_rules_directory
       copy_template_files(framework)
 
-      puts "\n✨ 初期化が完了しました！".green
+      puts "\n" + @pastel.green("✨ 初期化が完了しました！")
     end
 
     desc "add RULE_NAME", "新しいルールファイルを追加"
@@ -49,7 +56,7 @@ module Crules
     def add(rule_name)
       framework = options[:framework]
       unless AVAILABLE_FRAMEWORKS.key?(framework)
-        puts "❌ 無効なフレームワークです: #{framework}".red
+        puts @pastel.red("❌ 無効なフレームワークです: #{framework}")
         puts "利用可能なフレームワーク:"
         AVAILABLE_FRAMEWORKS.each do |name, desc|
           puts "  - #{name}: #{desc}"
@@ -61,12 +68,12 @@ module Crules
       target_path = File.join(rules_dir, "#{rule_name}.mdc")
       
       if File.exist?(target_path) && !options[:force]
-        puts "❌ ルール '#{rule_name}' は既に存在します。上書きするには --force オプションを使用してください。".red
+        puts @pastel.red("❌ ルール '#{rule_name}' は既に存在します。上書きするには --force オプションを使用してください。")
         exit 1
       end
 
       copy_with_extension(template_path, target_path)
-      puts "✨ ルール '#{rule_name}' を作成しました。".green
+      puts @pastel.green("✨ ルール '#{rule_name}' を作成しました。")
     end
 
     private
@@ -74,7 +81,7 @@ module Crules
     def create_rules_directory
       FileUtils.mkdir_p(rules_dir)
       FileUtils.mkdir_p(File.join(rules_dir, "errors"))
-      puts "📁 ディレクトリを作成しました: #{rules_dir}".green
+      puts @pastel.green("📁 ディレクトリを作成しました: #{rules_dir}")
     end
 
     def copy_template_files(framework)
@@ -90,10 +97,10 @@ module Crules
                 end
 
         if File.exist?(target) && !options[:force]
-          puts "  ⏩ #{filename}.mdc (スキップ: 既に存在します)".yellow
+          puts "  ⏩ #{filename}.mdc (スキップ: 既に存在します)"
         else
           copy_with_extension(template, target)
-          puts "  ✅ #{filename}.mdc".green
+          puts "  ✅ #{filename}.mdc"
         end
       end
     end
