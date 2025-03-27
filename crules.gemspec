@@ -6,7 +6,7 @@ Gem::Specification.new do |spec|
   spec.name          = "crules"
   spec.version       = Crules::VERSION
   spec.authors       = ["tirano-tirano"]
-  spec.email         = ["tirano.tirano@gmail.com"]
+  spec.email         = ["tiranotirano888@gmail.com"]
 
   spec.summary       = "A command-line tool to generate and manage Cursor rules (.mdc files) for various frameworks"
   spec.description   = "A command-line tool to generate and manage Cursor rules (.mdc files) for various frameworks"
