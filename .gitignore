@@ -11,16 +11,13 @@
 /test/version_tmp/
 /tmp/
 
-# Environment normalization
+# Bundler
 /.bundle/
-/lib/bundler/man/
+/vendor/bundle
 
-# RVM
-.rvm/
-
-# Ruby Version Manager
-.ruby-version
-.ruby-gemset
+# Environment
+.env
+.env.*
 
 # IDE
 .idea/
@@ -30,19 +27,31 @@
 
 # OS
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
 
 # Project specific
-.cursor/rules/errors/*.mdc
-!errors/error_logging_guide.mdc
+.cursor/
+
+# Environment normalization
+/lib/bundler/man/
+
+# RVM
+.rvm/
+
+# Ruby Version Manager
+.ruby-version
+.ruby-gemset
 
 # Logs
 *.log
 /logs/
 
 # Local development
-.env
-.env.*
 !.env.example
 
 # Build artifacts
