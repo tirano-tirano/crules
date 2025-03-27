@@ -1,0 +1,24 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+
+# Rule Title
+
+## Description
+Add your rule description here.
+
+## Guidelines
+- Guideline 1
+- Guideline 2
+- Guideline 3
+
+## Examples
+```dart
+// Example code here
+```
+
+## References
+- Reference 1
+- Reference 2 

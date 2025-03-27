@@ -1,0 +1,347 @@
+承知しました。Flutterプロジェクト向けに、以下を初期化するRuby CLIツール `crules` の設計・実装に向けて調査を開始します：
+
+- Dartコーディング規約、要件定義書、仕様書、設計書などのmdcファイル（テンプレート構造入り）を初期生成
+- エラーに関する仮説・検証・結果を記録するためのmdcファイル（分割戦略を含めて検討）
+- CursorのAIに対し、設計変更やエラー時にmdcファイルを更新するよう促す共通mdcファイル
+- コマンド名 `crules init` を採用し、出力先は `.cursor/rules/` ディレクトリ
+
+また、モジュールごとのmdcファイルはAIとの対話で生成される前提とし、人間が手動で追加できるよう `crules add` コマンドも設計に含めます。
+
+調査完了後、Rubyコードとテンプレートを提示します。
+
+# Flutterプロジェクト向け CursorルールCLI `crules` の設計・実装調査
+
+## CLIツール `crules` の概要と使用例
+`crules` はFlutter/DartプロジェクトのためのRuby製CLIツールで、Cursor AI用のルールファイル（`.mdc`拡張子のMarkdownファイル）を開発初期に自動生成します。これにより、プロジェクトのコーディング規約やドキュメント、エラーログのテンプレートをあらかじめ用意し、AIがプロジェクト文脈を理解しやすくします。例えば、プロジェクトのルートディレクトリで次のようにコマンドを実行すると:
+
+```bash
+$ crules init
+[crules] Initializing Cursor rules for Flutter project...
+[crules] Created .cursor/rules/dart_style.mdc
+[crules] Created .cursor/rules/requirements.mdc
+[crules] Created .cursor/rules/specification.mdc
+[crules] Created .cursor/rules/architecture.mdc
+[crules] Created .cursor/rules/ai_behavior.mdc
+[crules] Created .cursor/rules/errors/error_logging_guide.mdc
+[crules] Created .cursor/rules/errors/ (directory for error log files)
+```
+
+上記のように、`crules init` コマンドは自動的に `.cursor/rules/` ディレクトリ以下に複数のテンプレートファイルを生成します。これらのファイルはCursorエディタ上でAIに提供される「ルール」として機能し、プロジェクト固有の情報や方針をAIに学習させます ([Cursor Rules: Enhance Your Development Workflow with AI-Powered Coding | cursor101.com](https://cursor101.com/cursor/rules#:~:text=Project,be%20automatically%20included%20when%20needed)) ([GitHub - Mawla/cursor_rules: Behaviour for cursor](https://github.com/Mawla/cursor_rules#:~:text=,and%20more%20focused%20rule%20management))。
+
+## 生成されるルールファイル一覧と目的
+`crules init` によって生成される主な `.mdc` ファイルとその目的は以下のとおりです。
+
+- **`dart_style.mdc`** – *Dartのコーディング規約*: Dart/Flutterコードに適用するスタイルガイドラインを記述します。命名規則やコードフォーマット、ベストプラクティス等を含み、AIがコード生成やリファクタリング時にこれらの規約に従うようにします。
+- **`requirements.mdc`** – *要件定義書*: アプリケーションの要求事項やユーザーストーリーをまとめた文書です。プロジェクトで実現すべき機能や制約を箇条書きや短い段落で記述し、AIがプロジェクトの目的やゴールを理解できるようにします。
+- **`specification.mdc`** – *仕様書*: 要件を満たすための詳細な機能仕様を記載します。画面ごとの挙動、データフロー、アルゴリズムの要件など、実装に必要な具体的仕様や受け入れ基準を説明し、AIの提案やコード生成が仕様から逸脱しないようにします。
+- **`architecture.mdc`** – *設計書*: システムアーキテクチャや設計上の決定事項を記述します。例えば、アプリのレイヤードアーキテクチャ構成（プレゼンテーション層、ビジネスロジック層、データ層など）、使用するデザインパターン（例: MVVMやBLoCパターン）、状態管理手法（RiverpodやProviderなど）をまとめます。AIがコードを生成する際、既存アーキテクチャに沿った提案を行えるようにする狙いです。
+- **`ai_behavior.mdc`** – *AI行動指針ガイド*: CursorのAIアシスタント全般の振る舞いや回答方針に関するガイドラインを示します。プロジェクト全体に適用したいAIの応答スタイル（例えば「常に丁寧語で回答する」や「説明時には根拠を示す」など）や、ルール更新の促し（例: 新たなコーディング規約が必要と判断したら提案する）など、AIのグローバルな振る舞いを定義します。 ([Mastering Cursor Rules: A Developer's Guide to Smart AI Integration - DEV Community](https://dev.to/dpaluy/mastering-cursor-rules-a-developers-guide-to-smart-ai-integration-1k65#:~:text=Cursor%20Rules%20are%20configuration%20files,behavioral%20patterns%20for%20AI%20interactions)) ([Mastering Cursor Rules: A Developer's Guide to Smart AI Integration - DEV Community](https://dev.to/dpaluy/mastering-cursor-rules-a-developers-guide-to-smart-ai-integration-1k65#:~:text=,Question%20every%20assumption%20and%20inference))
+- **`errors/` ディレクトリ** – *エラー検証記録用ファイル群*: プロジェクトで発生したエラーやバグの記録を個別の .mdc ファイルとして蓄積するためのディレクトリです。初期化時にはガイド用のファイルとして **`error_logging_guide.mdc`**（エラー記録テンプレートガイド）が生成されます。このガイドにはエラー発生時に何を記録すべきか（仮説、検証手順、結果、対応策など）の雛形が書かれており、今後実際のエラーが起きた際にそれをコピーして個別のエラーログファイルを作成するための参考となります。エラーログファイル群は、AIが過去の不具合やその解決方法を参照できる知識ベースとして機能します。
+
+以上のように、スタイルガイドから設計文書、エラー履歴に至るまで、**プロジェクト固有のルールや情報を網羅したファイルセット**が用意されます。これらはCursor上で**プロジェクトルール**としてAIに読み込まれ、AIによるコード自動生成や回答がプロジェクトの文脈や規約と整合するよう助けます ([Cursor Rules: Enhance Your Development Workflow with AI-Powered Coding | cursor101.com](https://cursor101.com/cursor/rules#:~:text=Project,be%20automatically%20included%20when%20needed)) ([GitHub - Mawla/cursor_rules: Behaviour for cursor](https://github.com/Mawla/cursor_rules#:~:text=,and%20more%20focused%20rule%20management))。
+
+## .mdcファイルテンプレートの構成
+各 `.mdc` ファイルは**YAMLフロントマター + Markdown本文**という構成になっています。ファイル冒頭はYAML形式のメタデータ（フロントマター）で挟まれており、`---` で区切られています。その下にMarkdown形式の見出しや箇条書きを含む本文が続きます ([justdo/.cursor/rules/999-mdc-format.mdc at master · justdoinc/justdo · GitHub](https://github.com/justdoinc/justdo/blob/master/.cursor/rules/999-mdc-format.mdc#:~:text=)) ([justdo/.cursor/rules/999-mdc-format.mdc at master · justdoinc/justdo · GitHub](https://github.com/justdoinc/justdo/blob/master/.cursor/rules/999-mdc-format.mdc#:~:text=After%20the%20frontmatter%2C%20the%20rest,file%20should%20be%20valid%20Markdown))。
+
+**フロントマターの主なフィールド:**
+
+- `description`: ルールファイルの簡潔な説明です。AIアシスタントに対して「どのような状況でこのルールがRelevant（関連）か」を伝える役割があります ([justdo/.cursor/rules/999-mdc-format.mdc at master · justdoinc/justdo · GitHub](https://github.com/justdoinc/justdo/blob/master/.cursor/rules/999-mdc-format.mdc#:~:text=,details%3E%60%20for%20best%20results))。例えば `"Dart coding style guidelines for this project"` のように記載し、このルールの概要を示します（可能であれば「<話題>: <詳細>」の形式にするとAIに伝わりやすいとされています ([justdo/.cursor/rules/999-mdc-format.mdc at master · justdoinc/justdo · GitHub](https://github.com/justdoinc/justdo/blob/master/.cursor/rules/999-mdc-format.mdc#:~:text=))）。
+- `globs`: このルールを適用すべきファイルパターン（Glob形式）の一覧です。カンマ区切りでファイルパスのパターンを指定します（配列ではなく単一の文字列として指定する点に注意） ([justdo/.cursor/rules/999-mdc-format.mdc at master · justdoinc/justdo · GitHub](https://github.com/justdoinc/justdo/blob/master/.cursor/rules/999-mdc-format.mdc#:~:text=description%3A%20Brief%20description%20of%20what,the%20rule%20does)) ([justdo/.cursor/rules/999-mdc-format.mdc at master · justdoinc/justdo · GitHub](https://github.com/justdoinc/justdo/blob/master/.cursor/rules/999-mdc-format.mdc#:~:text=%3E%20,or%20quotes))。例えば Dartコード全般に適用するなら `"**/*.dart"`、プロジェクト全体に関わるルールなら空欄も可能です。**注意**: `globs` を空にした場合、そのルールは特定のファイルパターンには紐付かず、代わりにユーザのリクエスト内容に応じて関連性があるとAIが判断した際に読み込まれます ([justdo/.cursor/rules/999-mdc-format.mdc at master · justdoinc/justdo · GitHub](https://github.com/justdoinc/justdo/blob/master/.cursor/rules/999-mdc-format.mdc#:~:text=,applicable%20to%20the%20user%20request))。逆に、特定のパターンに非常に限定されるルール以外では安易にワイルドカードで全ファイル（例: `**/*`）を指定せず、必要なら後述の`alwaysApply`を使うことが推奨されています。
+- `alwaysApply`: グロブパターンに関係なく**常に適用**したいルールの場合に`true`に設定します。それ以外は通常`false`にします ([justdo/.cursor/rules/999-mdc-format.mdc at master · justdoinc/justdo · GitHub](https://github.com/justdoinc/justdo/blob/master/.cursor/rules/999-mdc-format.mdc#:~:text=,applicable%20to%20the%20user%20request))。例えばプロジェクト全体に跨るコーディング規約やAIの行動ガイドラインのように、常にコンテキストへ含めたい内容は `alwaysApply: true` とします。ただし、この設定は本当にグローバルに必要なガイドラインに対してのみ**慎重に使用**することが推奨されています ([justdo/.cursor/rules/999-mdc-format.mdc at master · justdoinc/justdo · GitHub](https://github.com/justdoinc/justdo/blob/master/.cursor/rules/999-mdc-format.mdc#:~:text=only%20applied%20with%20relevant%20files))。不要なファイルまで常に読み込むとAIのコンテキストを圧迫するためです。
+
+フロントマターは以上のようなキーと値を記述し、再度 `---` の区切りで終了します。その後に続くMarkdown本文では、通常のMarkdown記法で内容を構造化します ([justdo/.cursor/rules/999-mdc-format.mdc at master · justdoinc/justdo · GitHub](https://github.com/justdoinc/justdo/blob/master/.cursor/rules/999-mdc-format.mdc#:~:text=After%20the%20frontmatter%2C%20the%20rest,file%20should%20be%20valid%20Markdown))。典型的には以下のような構成になります。
+
+- 一番上にH1（`#`）見出しで**ルールのタイトル**を記載します（例: `# Dart Coding Style` や `# 要件定義`）。これは内容の大見出しであり、ルールを端的に表す名称です。
+- 続いてH2（`##`）見出しや箇条書きを用いて内容を整理します。例えばスタイルガイドであれば `## 命名規則`、`## フォーマット` のようにセクションを分け、その下に具体的なガイドラインを箇条書きで列挙します ([justdo/.cursor/rules/999-mdc-format.mdc at master · justdoinc/justdo · GitHub](https://github.com/justdoinc/justdo/blob/master/.cursor/rules/999-mdc-format.mdc#:~:text=))。要件定義や仕様書であれば `## 機能一覧`、`## 非機能要件` など章立てし、その下に文章やリストで説明を書きます。
+- 箇条書き（`-` や `1.`）は手順やルール、要点の列挙に使います。各項目は簡潔な文章で書き、読みやすさを意識します。
+- 必要に応じてコードブロック（\`\`\`dart ・・・ \`\`\` など）や引用ブロックも利用できますが、**内容はできるだけ簡潔に**まとめ、長くなりすぎないようにします（Cursorのルール本文として適切にコンテキストに収まるよう、推奨は数十行程度に抑えることです ([Cursor Rules Framework](https://solosalon.clinamenic.com/cursor-rules-framework#:~:text=)) ([Cursor Rules Framework](https://solosalon.clinamenic.com/cursor-rules-framework#:~:text=,Focus%20on%20key%20directives))）。
+
+以上が `.mdc` テンプレートファイルの基本構造です。次に各テンプレートごとに、想定される具体的な内容や分割方針について解説します。
+
+## 各ルールファイルテンプレートの内容例
+
+### `dart_style.mdc` – Dartコーディング規約テンプレート
+**目的:**
+DartおよびFlutterプロジェクトでのコードスタイルの一貫性を保つためのルールを定めます。公式の Dart スタイルガイド（Effective Dart）に準拠した規約や、プロジェクトで合意した命名規則・ベストプラクティスを含めます。これによりAIはコード生成やリファクタ時にコードスタイルを遵守します。
+
+**フロントマター例:**
+```markdown
+---
+description: "Dart Style Guide and best practices for this project"
+globs: "**/*.dart"
+alwaysApply: false
+---
+```
+- `description` には「Dartコードスタイルとベストプラクティス」といった概要を書きます。
+- `globs` は `"**/*.dart"` としてプロジェクト内の全ての `.dart` ファイルに適用されるようにします ([justdo/.cursor/rules/999-mdc-format.mdc at master · justdoinc/justdo · GitHub](https://github.com/justdoinc/justdo/blob/master/.cursor/rules/999-mdc-format.mdc#:~:text=,files))。
+- `alwaysApply` は`false`です。Dartコードに関わるときのみ適用されれば良いため、全コンテキストに常駐させる必要はありません。
+
+**本文構成:**
+```markdown
+# Dart Coding Style
+
+## 命名規則
+- **クラス名**は`PascalCase`（単語の先頭を大文字）で記述する ([Flutter Cursor Rules | CursorRule](https://cursorrule.com/posts/flutter-cursor-rules#:~:text=Nomenclature))。
+- **メソッド・変数名**は`camelCase`（最初の単語は小文字、以降の単語頭字を大文字）で記述する ([Flutter Cursor Rules | CursorRule](https://cursorrule.com/posts/flutter-cursor-rules#:~:text=Nomenclature))。
+- **ファイル名・ディレクトリ名**は`lowercase_with_underscores`（全て小文字＋単語間アンダースコア）で記述する ([Flutter Cursor Rules | CursorRule](https://cursorrule.com/posts/flutter-cursor-rules#:~:text=Nomenclature))。
+- **定数**は原則として`lowerCamelCase`。ただしグローバル定数や環境変数は必要に応じて全大文字スネークケース（e.g. `MAX_COUNT`）を使用する ([Flutter Cursor Rules | CursorRule](https://cursorrule.com/posts/flutter-cursor-rules#:~:text=,of%20abbreviations%20and%20correct%20spelling))。
+- 略語は極力使わず、意味のある単語を用いる（例: "authentication" と書き、省略形の "auth" は避ける）。ただし一般的な略語（API, HTTPなど）は例外 ([Flutter Cursor Rules | CursorRule](https://cursorrule.com/posts/flutter-cursor-rules#:~:text=,next%20for%20middleware%20function%20parameters))。
+
+## フォーマットとコーディング習慣
+- **インデント**はスペース2つ。公式フォーマッタ `dart format` に従い、自動フォーマットを適用する ([Effective Dart: Style | Dart](https://dart.dev/effective-dart/style#:~:text=,172)) ([Effective Dart: Style | Dart](https://dart.dev/effective-dart/style#:~:text=,for%20all%20flow%20control%20statements))。
+- **行の長さ**は80文字以内に収めることを優先する ([Effective Dart: Style | Dart](https://dart.dev/effective-dart/style#:~:text=,172))。
+- **波括弧** `{}` はすべての制御構文 (`if`, `for` 等) において省略せずに記述する ([Effective Dart: Style | Dart](https://dart.dev/effective-dart/style#:~:text=,172))。
+- **ファイルインポート順**: 組み込みの`dart:`パッケージ→サードパーティの`package:`→相対パスの順にソートする ([Effective Dart: Style | Dart](https://dart.dev/effective-dart/style#:~:text=,lines%2080%20characters%20or%20fewer))。
+- **不要な空行**は関数内では挿入しない（可読性のため、必要な場合のみ） ([Flutter Cursor Rules | CursorRule](https://cursorrule.com/posts/flutter-cursor-rules#:~:text=,One%20export%20per%20file))。
+- **その他**: 一貫したコードスタイルを維持し、可読性と保守性を高める（公式ガイドライン遵守 ([Flutter and Dart: Best Practices in Coding Standards | by Jai-Techie | Medium](https://medium.com/@jaitechie05/flutter-and-dart-best-practices-in-coding-standards-a53a249d7a83#:~:text=1,Style))など）。
+```
+
+*補足:* 上記は内容例であり、実際にはプロジェクトの合意事項に合わせて適宜変更します。例えばFlutter特有の慣習（Widgetの使い方や`BuildContext`の省略名`ctx`の使用可否など）も含めると良いでしょう ([Flutter Cursor Rules | CursorRule](https://cursorrule.com/posts/flutter-cursor-rules#:~:text=,next%20for%20middleware%20function%20parameters))。重要なのは**スタイルガイド全体を詰め込みすぎず、箇条書きで主要ポイントをまとめる**ことです。詳細なスタイル規約はリンク参照やコメントで補足し、本文はAIがすぐ実践できる具体的ルールの集合にします。
+
+### `requirements.mdc` – 要件定義テンプレート
+**目的:**
+プロジェクトの要求事項をAIに理解させるための文書です。アプリの目的やユーザーが達成したいこと、提供すべき機能一覧、制約事項などを記載します。これによりAIはプロジェクトのゴールを把握し、実装や回答の際に不要な機能を提案したり、要件から外れた解決策を示したりしにくくなります。
+
+**フロントマター例:**
+```markdown
+---
+description: "Project requirements and user stories"
+globs: 
+alwaysApply: false
+---
+```
+- `globs`は指定しません（空のまま）か、もしくはプロジェクトのドキュメントファイルに関連付けたい場合には適切なパスを指定します（例: ドキュメントディレクトリがあればその配下など）。ここでは要件定義は特定ファイルに紐付かない汎用的なコンテキスト情報なので空としています。
+- `alwaysApply` は`false`です。要件定義は常にAIにロードするほどではなく、必要に応じて参照できれば良いためです（ユーザーからの質問や実装タスクに要件関連のキーワードが含まれる場合、AIがこのルールを関連コンテキストとして自動で読み込むことが期待されます ([justdo/.cursor/rules/999-mdc-format.mdc at master · justdoinc/justdo · GitHub](https://github.com/justdoinc/justdo/blob/master/.cursor/rules/999-mdc-format.mdc#:~:text=,applicable%20to%20the%20user%20request))）。
+
+**本文構成:**
+```markdown
+# 要件定義
+
+## プロジェクト概要
+- **ターゲットユーザー**: 新規顧客および既存顧客（スマートフォンアプリ利用者）。
+- **課題と目的**: ユーザーが〇〇できるようにすることで△△という課題を解決する。
+- **基本コンセプト**: シンプルで直感的なUI、高速な動作、オフライン対応。
+
+## 機能要件
+1. **ユーザー登録と認証**: 新規ユーザー登録、ログイン、パスワードリセット機能。
+2. **プロフィール管理**: ユーザーが自身のプロフィール情報（名前、アイコン等）を閲覧・編集できる。
+3. **〇〇機能**: ユーザーが△△を行えるようにするコア機能。...(以下主要な機能を列挙)
+
+## 非機能要件
+- **パフォーマンス**: アプリ起動時に3秒以内にホーム画面を表示。主要機能操作は1秒以内のレスポンス。
+- **対応OS**: iOS 14以上、Android 11以上。
+- **セキュリティ**: ユーザーデータは端末内に暗号化して保存。通信は常にSSL/TLSを使用。
+- **スケーラビリティ**: 将来的なユーザー増加に耐えうるAPI設計とする（想定同時接続〇〇人）。
+```
+
+このように、要件定義書では**機能要件**と**非機能要件**を中心に簡潔にまとめます。必要であれば**制約事項**（例: 提供しない範囲や他システムとのインタフェース要件）や**優先度**などの節を設けてもよいでしょう。要件は実装やテストの指針となるため、AIが誤った解釈をしないよう明確かつ平易な表現を心掛けます。
+
+### `specification.mdc` – 仕様書テンプレート
+**目的:**
+要件を実現するための具体的な仕様を記述します。これは要件定義を受けて作成される詳細仕様やシステム仕様に相当し、AIに「何をどう実装すべきか」のより具体的な指針を与えます。ここには画面仕様、使用ライブラリ、データ形式、振る舞いの詳細などを含めます。
+
+**フロントマター例:**
+```markdown
+---
+description: "Functional and system specifications for the app"
+globs: 
+alwaysApply: false
+---
+```
+（`globs`と`alwaysApply`は要件定義と同様の扱いで構いません。特定のファイルに結びつかない汎用情報なので`globs`は空、`alwaysApply`も`false`としています。）
+
+**本文構成の例:**
+```markdown
+# 仕様書
+
+## 画面仕様
+- **ログイン画面**: ユーザー名とパスワードを入力する。入力検証（未入力チェック、パスワードは8文字以上など）を行い、エラーはフォーム下部に赤字表示。
+- **ホーム画面**: 認証後に表示。ユーザーの〇〇情報をリスト表示し、各項目をタップすると詳細画面へ遷移。プルダウンによる再読込に対応。
+- ...(主要画面やUI要素ごとの仕様を記載)
+
+## データ仕様
+- **データモデル**: ユーザー情報（フィールド: id, name, email, created_at, ...）、〇〇エンティティ（フィールド: ...）など主要なデータ構造を定義。
+- **API仕様**: 
+  - `/api/v1/xxx` (GET) – △△の一覧を取得。レスポンスJSONフィールド: ...（具体的なキーと型を列挙）。
+  - `/api/v1/yyy` (POST) – △△を新規作成。リクエストボディ: ...、レスポンス: ...。
+- **エラーハンドリング**: API通信エラー時のリトライ戦略（最大3回まで）、タイムアウトは5秒。
+
+## 振る舞いとビジネスロジック
+- **〇〇機能フロー**: ユーザーが△△を行った際の処理手順。1) ローカルデータ検証 → 2) API呼び出し → 3) 応答に応じUI更新 or エラー表示。
+- **バックグラウンド処理**: アプリ起動時に前回取得データのキャッシュを検証し、一定条件で自動更新を行う。
+- **通知**: 条件Xを満たした場合、プッシュ通知を送信（サーバ側で判定しFirebase経由で配信）。
+
+## 使用ライブラリ・ツール
+- **状態管理**: Riverpodを使用。各画面ごとにProviderを定義し、UIはProviderから状態を購読するアーキテクチャ。
+- **路線**: HTTP通信に `Dio`、JSONシリアライズに `freezed`＋`json_serializable` を使用。
+- **テスト**: ユニットテスト・ウィジェットテストを導入。主要なビジネスロジックには必ずテストケースを作成。
+```
+
+仕様書テンプレートは要件に対応した**具体的な仕様レベルの記述**を行います。AIにとっては、コードを書く際の詳細な制約や文脈を提供するもので、例えば「特定のAPIエンドポイントが存在する」「この画面ではこういうデータを表示する」といった知識になります。あまりに詳細になりすぎる場合は、外部の仕様書（別ファイル）への参照リンクを貼ることも検討できます（Cursorの.mdリンク機能を使い、`[詳細設計書](mdc:../docs/detailed_spec.md)` のように他のファイルを参照可能です ([justdo/.cursor/rules/999-mdc-format.mdc at master · justdoinc/justdo · GitHub](https://github.com/justdoinc/justdo/blob/master/.cursor/rules/999-mdc-format.mdc#:~:text=You%20can%20reference%20other%20files,using%20the%20markdown%20link%20syntax))）。ただし`.mdc`ファイル内に記述する内容は、**AIに解釈させたい重要事項に絞り、簡潔に**まとめることが大切です。
+
+### `architecture.mdc` – アーキテクチャ設計テンプレート
+**目的:**
+プロジェクトのアーキテクチャ構成や設計上の原則を定義します。システムの構造、モジュール分割、採用するデザインパターン、フレームワークの使い方など、高レベルの指針を示します。AIはここからプロジェクトの骨格を理解し、設計に即したコード提案を行います。
+
+**フロントマター例:**
+```markdown
+---
+description: "High-level architecture and design principles"
+globs: 
+alwaysApply: false
+---
+```
+- アーキテクチャ設計はプロジェクト全体に関わる内容ですが、`alwaysApply`は慎重に判断します。例えば**非常に重要なコア情報**（例: フォルダ構成や主要コンポーネントの説明のみで短ければ）であれば`alwaysApply: true`として常に読み込む手もあります ([justdo/.cursor/rules/999-mdc-format.mdc at master · justdoinc/justdo · GitHub](https://github.com/justdoinc/justdo/blob/master/.cursor/rules/999-mdc-format.mdc#:~:text=,instead))。しかし、詳細が多い場合は`false`のままとし、AIが必要時に読み込む形にします。
+- `globs`は特定ディレクトリ（例: `lib/**` などプロジェクトコード全般）にしてもよいですが、ここでは空にしてあります。ワークスペース全体に適用されるルールとして記述する意図です。
+
+**本文構成例:**
+```markdown
+# アーキテクチャ設計
+
+## システム構成とレイヤー
+- **プレゼンテーション層**: UIとユーザー操作を扱う。FlutterのWidgetで画面構成し、状態管理はBusiness層から提供されたProviderを利用。
+- **ビジネスロジック層**: アプリケーションのドメインロジックを担当。ViewModelやUseCaseクラスとして実装し、プレゼンテーション層とデータ層の仲介を行う。
+- **データ層**: リポジトリパターンを採用。`Repository`インターフェースを通じてAPIクライアントやローカルDB（例: SQLite）からデータ取得。Data Source（RemoteDataSource, LocalDataSource）を内部に持つ。
+
+## フォルダ構成
+- **lib/** 配下に主要コードを配置:
+  - lib/ui/… （UI層: 画面ごとのディレクトリとWidgetクラス）
+  - lib/domain/… （ビジネスロジック層: ViewModelやサービスクラス、ユースケース）
+  - lib/data/… （データ層: モデル定義、リポジトリ実装、API・DBアクセス）
+  - lib/common/… （共通ユーティリティやテーマ、定数定義）
+- **test/** 配下にテストコードを配置。対応する機能ごとにディレクトリを分け、命名は `<対象名>_test.dart`。
+
+## デザイン指針・技術選定
+- **状態管理**: Riverpodを使用し、グローバルな状態とScopedな状態を適切に使い分ける。
+- **非同期処理**: `Future`/`Stream`とasync/awaitパターンで記述。可能な箇所では`StreamProvider`や`FutureProvider`を活用。
+- **依存関係**: UIは直接データ層に依存せず、必ずビジネスロジック層を経由する（依存逆転の原則を遵守）。
+- **エラーハンドリング**: ビジネスロジック層で例外をキャッチし、ユーザー向けエラー表示用のResult型などに変換してUIに伝播。
+
+## 追加のアーキテクチャ情報
+- **デザインパターン**: SOLID原則を遵守し、可能な限り疎結合な設計。必要に応じてStrategyパターンやFactoryパターンを導入して拡張性を確保。
+- **パフォーマンス**: 大量リスト表示では`ListView.builder`で遅延レンダリング、不要なWidget再構築を避ける設計。
+- **プラットフォーム依存**: プラットフォーム固有コードは`platform_channel`を介して分離実装し、ビジネスロジックからは抽象化する。
+```
+
+このテンプレートでは、プロジェクトの**構造を理解するための情報**を中心に据えます。特にフォルダ階層や各レイヤーの責務はAIにとってコード提案時の前提知識となります。また、ここに書かれている内容は**簡潔さ**が重要です。例えば各層の説明は箇条書きで要点だけ示し、詳細な設計議論は別ドキュメント（必要ならリンクで参照）に任せます ([Cursor Rules Framework](https://solosalon.clinamenic.com/cursor-rules-framework#:~:text=))。これにより、AIは常に基本アーキテクチャを把握しつつも、コンテキストが過剰に埋まるのを防ぎます。
+
+### `ai_behavior.mdc` – AI行動指針・ルール更新促進テンプレート
+**目的:**
+CursorのAIアシスタントがこのプロジェクトで一貫した振る舞いをするよう、人間側からの指針や期待を伝えるルールです。他の.mdcファイルが技術的な文脈を提供するのに対し、このファイルは**AIの応答スタイルや作業手順**に関するガイドとなります。また、プロジェクトのルールファイル自体をアップデートすべきタイミングで提案を促す、といったメタ的な指示も含めます。
+
+**フロントマター例:**
+```markdown
+---
+description: "Guidelines for AI behavior and rule evolution"
+globs: 
+alwaysApply: true
+---
+```
+- このファイルは非常に重要度が高いグローバル指針のため、`alwaysApply: true`と設定しています ([justdo/.cursor/rules/999-mdc-format.mdc at master · justdoinc/justdo · GitHub](https://github.com/justdoinc/justdo/blob/master/.cursor/rules/999-mdc-format.mdc#:~:text=it%27s%20loaded%20only%20when%20applicable,to%20the%20user%20request))。これによりユーザーがどんなファイルを編集していても常にAIに読み込まれ、AIが常にこの指針を念頭に応えるようになります。
+- `globs`は全局的な内容なので空で構いません（`alwaysApply`をtrueにする場合、グロブは指定不要です ([justdo/.cursor/rules/999-mdc-format.mdc at master · justdoinc/justdo · GitHub](https://github.com/justdoinc/justdo/blob/master/.cursor/rules/999-mdc-format.mdc#:~:text=it%27s%20loaded%20only%20when%20applicable,to%20the%20user%20request))）。
+
+**本文構成例:**
+```markdown
+# AIアシスタント行動ガイド
+
+## 応答スタイルガイド
+- **明瞭簡潔**: 回答はできるだけ簡潔に、しかし必要な詳細は含めて記述する（過度に冗長にならないようにする）。
+- **根拠の提示**: コード提案や助言には、可能な限り根拠や参照（ドキュメントや規約への言及）を含め、説得力のある説明を付加する。
+- **一貫性**: 用語や命名はプロジェクト内で一貫したものを使う（既存のクラス名・関数名を踏襲するなど）。
+- **敬意と協調**: ユーザー（開発者）の意図を尊重し、必要に応じて質問を投げかけながら共同作業する姿勢で応答する。
+
+## 作業手順に関する指針
+- **段階的提案**: 複雑な問題は一度に結論を出そうとせず、ステップバイステップで考え提案する ([Mastering Cursor Rules: A Developer's Guide to Smart AI Integration - DEV Community](https://dev.to/dpaluy/mastering-cursor-rules-a-developers-guide-to-smart-ai-integration-1k65#:~:text=,Question%20every%20assumption%20and%20inference))。仮説→検証→結果のプロセスを示すこと。
+- **安全なコード**: 可能な限りバグや脆弱性を生まない実装を心がける。入力値検証や例外処理を怠らない。
+- **ルール遵守**: 他の.mdcファイル（スタイルガイドや要件、設計など）に書かれた内容に反しない回答をする。万一矛盾する要求があれば、その旨を指摘し確認を取る。
+- **ルール更新提案**: プロジェクトのルールに不足があると感じた場合（例えば新しい型やAPI使用でスタイルガイドに未定義のケースが出た等）、直接コードを無視せず、まずルールの更新を提案する。必要に応じてユーザーに`.mdc`ファイルの修正案を示し合意を得る。
+
+## プロジェクト固有留意点
+- **Flutter特有**: Widgetのビルド方法や状態管理についてはFlutterのベストプラクティスを踏まえて提案する（setStateの乱用を避けRiverpodを用いる等）。
+- **言語**: コード・コメント・ドキュメントは全て英語で記述するルールのため、AIのコード内コメントや説明も英語で記載する ([Flutter Cursor Rules | CursorRule](https://cursorrule.com/posts/flutter-cursor-rules#:~:text=Basic%20Principles))。
+- **改善の姿勢**: もしAIの出力が誤解を生んだ場合は即座に謝罪し、プロジェクトルールを見直して今後改善する。
+```
+
+このファイルの内容は、いわば**チームの一員としてのAI開発アシスタントへの心得**です ([Mastering Cursor Rules: A Developer's Guide to Smart AI Integration - DEV Community](https://dev.to/dpaluy/mastering-cursor-rules-a-developers-guide-to-smart-ai-integration-1k65#:~:text=Cursor%20Rules%20are%20configuration%20files,behavioral%20patterns%20for%20AI%20interactions))。特にプロジェクト開始時には、AIがどう振る舞うべきかを明示しておくことで、やりとりが円滑になります。また「ルール更新の促し」に関しては、このプロジェクトではAI自身がルールファイル（.mdc）の改善提案を行うことを歓迎する姿勢を示しています。例えば「新しいコーディング規約を追加した方が良い」という状況になれば、AIは直接コードを書き換える代わりにユーザーへ `.mdc` ファイルの追記提案を行う、といった動きを期待しています。このようにAIにメタな行動指針を与えることで、プロジェクトルールは**生きたドキュメント**として徐々に充実していくでしょう。
+
+### `error_logging_guide.mdc` – エラーログ記録テンプレートと`errors/`ディレクトリの運用
+**目的:**
+エラーやバグが発生した際に、その内容と解決プロセスを記録するためのテンプレートおよびガイドを提供します。`error_logging_guide.mdc`は雛形となるガイドであり、実際のエラー発生時にはこれを参考に個別のログファイルを `errors/` ディレクトリ内に作成します。エラーログを蓄積することで、AIは過去の問題と対策を学習し、将来似た問題が起きた際に迅速かつ的確な支援ができるようになります。
+
+**フロントマター例（error_logging_guide.mdc）:**
+```markdown
+---
+description: "How to document errors and debugging outcomes"
+globs: "errors/*.mdc"
+alwaysApply: false
+---
+```
+- `description`にはエラー記録の用途を簡潔に書きます（例: "エラーとその検証結果の記録方法を示すガイド"）。
+- `globs`は`errors/`ディレクトリ内の全ての`.mdc`ファイルを対象としています。これにより、このガイド自体も`errors/`以下に置けば自身にはマッチしますし、またAIがエラーログ関連の会話をするときに`errors/`内のファイルをまとめて参照する助けになります。
+- `alwaysApply`は`false`です。エラーに関する話題になった時や明示的に参照した時だけで良いためです（エラーに無関係な通常開発時には読み込まれないようにする）。
+
+**本文構成（error_logging_guide.mdc）:**
+```markdown
+# エラー記録ガイド
+
+プロジェクトでバグやエラーが発生した場合、以下の項目を新規.mdcファイルに記録してください（ファイルは `.cursor/rules/errors/` 配下に配置）。
+
+## エラー概要 (Error Description)
+- **発生日時**: 2025-03-27 18:00 頃（例として日時を記載）
+- **現象**: 発生したエラーの簡潔な説明（例: アプリ起動時にNullPointerExceptionが発生し強制終了）。
+- **エラーメッセージ/コード**: 実際のエラーメッセージやスタックトレースの要約。
+
+## 仮説 (Hypothesis)
+- 原因として考えられることを箇条書き。例:
+  - 初期化処理でnullのままアクセスしている変数があるのではないか。
+  - 特定のデバイス/OSバージョン依存の不具合の可能性。
+
+## 検証方法 (Verification Steps)
+1. 再現手順: エラーを再現するための具体的手順（例: 特定の画面遷移手順、入力値など）。
+2. デバッグまたはログ調査の方法: ログ出力やブレークポイントを用いてどこで問題が起きているか確認。
+3. 仮説ごとの検証: 上記仮説1について、関連する変数の値をログ出力して確認...（箇条書きや番号付きリストで検証内容を整理）。
+
+## 検証結果と結論 (Results & Conclusion)
+- 仮説1: 該当なし（原因ではなかった）。根拠: 〇〇の値は正常だった。
+- 仮説2: 有力。△△関数内で特定条件下にnullになるケースを確認。
+- **判明した原因**: △△が原因でNullPointerExceptionが発生していたことを特定。
+- **対応策**: 該当箇所でnullチェックを追加。関連する初期化処理の順序を変更して対処。
+
+## 修正と再発防止 (Fix & Prevention)
+- コミットID: abcdef1234（修正を含むコミットのハッシュ）にてこのバグを修正。
+- **修正内容**: △△関数でのnullチェック追加、および初期化順序の変更。
+- **テスト結果**: 修正後に同手順で再現を試み、エラーが発生しないことを確認。ユニットテスト`test/abc_test.dart`を追加し再発防止を検証。
+- **備考**: 今回の教訓として、重要な初期化処理にはガード条件を入れるルールを`dart_style.mdc`に追記検討。
+```
+
+上記のガイドに沿って、新たなエラーが発生するたびに例えば `errors/20250327_null_pointer_home_screen.mdc` のようなファイルを作成し、詳細を記録していきます。**ファイル名の命名戦略**については後述しますが、ここでは日付と現象を組み合わせた例を示しています。
+
+**エラーログファイルの命名と分割戦略:**  
+エラー記録を蓄積していく際、ファイルの分割・命名規則を一貫させることが重要です。いくつか考えられる戦略を挙げます。
+
+- **日付プレフィックス方式**: エラー発生日をファイル名の先頭に入れる方法です（例: `errors/20250327_nullpointer_exception.mdc`）。日付でソートされるため時系列に追いやすく、新しいものも判別しやすい利点があります。複数のエラーが同日に発生した場合は、さらに短い識別子を付与（例: `20250327_nullpointer_home.mdc`, `20250327_api_timeout.mdc`）することで区別します。
+- **モジュール/機能別方式**: エラーが関連するモジュールや画面ごとにファイルを分ける方法です（例: `errors/auth_login_invalid_password.mdc`, `errors/home_nullpointer.mdc`）。同じ領域の不具合をまとめて管理できる反面、時系列が前後する可能性があるため、ファイル内に発生日を記録するなどの補足が必要です。
+- **エラー種類別方式**: エラーの種類（例外のタイプや症状）で分類する方法です（例: `errors/nullpointer_issues.mdc`, `errors/network_timeouts.mdc`）。似た種類の問題を集約できますが、一ファイルに複数の事象が混在すると内容が肥大化する懸念があります。
+
+実際にはこれらを**組み合わせた命名**をすることが望ましいでしょう。例えば「`<日付>_<モジュール>_<簡潔なエラー説明>.mdc`」とすることで、日付順管理とモジュール別管理の両立を図れます。具体例: `errors/20250327_home_nullpointer.mdc` （2025年3月27日にHome画面で発生したヌルポインタ例外）。あるいはユニークIDを付与しつつモジュール名を入れる `error_001_auth_login.mdc` などの連番も考えられますが、番号だけでは内容がわかりづらいため**内容を表すキー詞をファイル名に含めること**を推奨します ([Optimal structure for .mdc rules files - Discussion - Cursor - Community Forum](https://forum.cursor.com/t/optimal-structure-for-mdc-rules-files/52260#:~:text=2,descriptive%20of%20the%20rule%27s%20purpose))。
+
+また、**各エラーログ.mdcのフロントマター**には、そのエラーに関連の深いファイルパスを`globs`として指定しておくと便利です。例えばHome画面のNullPointerに関するログであれば、`globs: "lib/ui/home/**/*"` のようにそのエラーが発生した画面や機能に関連するソースコードパスを指定しておきます。こうすることで、Cursorで開発者がそのモジュールのコードを開いてAIと対話する際に、該当エラーログが自動的にコンテキストに含まれやすくなります。実際、Cursorでは「編集中のファイルがあるルールのglobsにマッチする場合、自動的にそのルールを適用する」動作があります。さらに、ログファイルを生成する際にシステム的に自動投入することも可能で、プロジェクトのログ出力機構と連携してCursorルールを更新する取り組みも報告されています ([tip: Cursor Rules .mdc files may be created/updated dynamically with your… | Adam Gospodarczyk](https://www.linkedin.com/posts/overment_tip-cursor-rules-mdc-files-may-be-created-activity-7306675943396302848-NXRI#:~:text=tip%3A%20Cursor%20Rules%20,I%20chat%20with%20certain%20files))。例えば、アプリのランタイムでエラー検知時に対応する.mdcファイルを自動生成・更新するようなスクリプトを組むことで、エラーログ収集とAIコンテキスト提供を自動化できます ([tip: Cursor Rules .mdc files may be created/updated dynamically with your… | Adam Gospodarczyk](https://www.linkedin.com/posts/overment_tip-cursor-rules-mdc-files-may-be-created-activity-7306675943396302848-NXRI#:~:text=tip%3A%20Cursor%20Rules%20,I%20chat%20with%20certain%20files))。
+
+総じて、`errors/`ディレクトリ運用では**「1エラー=1ファイル」**を基本とし、上記ガイドテンプレートに沿って記録します。適切な命名規則をプロジェクト内で決めて遵守することで、AIも開発者も過去の経緯を辿りやすくなるでしょう。
+
+## CLIツールの出力内容構造と将来的な拡張性
+`crules` が生成する各ファイルは上記のような構造と内容を持ちます。初期状態では雛形やガイドライン中心ですが、プロジェクトの進行に合わせて**追記・更新されていくことを前提**としています。将来的な拡張性について、以下の点が考慮されています。
+
+- **ファイル構成の体系化**: 今回生成するファイル群以外にも、必要に応じてファイルを追加しやすいように構成されています。例えばプロジェクトが進んでテスト戦略のルールを追加したければ、`.cursor/rules/testing.mdc` を新規作成してもよいでしょう。ディレクトリ階層も柔軟で、`errors/`の他に`docs/`ディレクトリを作ってドキュメント系ルールを整理することも可能です。実際Cursorルールのベストプラクティスでは、ルールファイルに番号やカテゴリを付けて整理する方法も提案されています ([My Best Practices for MDC rules and troubleshooting - How To - Cursor - Community Forum](https://forum.cursor.com/t/my-best-practices-for-mdc-rules-and-troubleshooting/50526#:~:text=))。`crules`のデフォルトではシンプルに名前のみですが、運用次第でプレフィックス番号を付けてソート順を管理することもできます（例: `001-dart_style.mdc`, `010-requirements.mdc` など）。
+- **テンプレート内容のカスタマイズ**: `crules`ツール自体にテンプレートが組み込まれており、必要に応じてアップデート可能です。プロジェクト固有の事情に合わせて、生成直後に開発チームが編集できる前提です。特に`ai_behavior.mdc`や`error_logging_guide.mdc`などは各チームの開発文化やワークフローに合わせて改変して構いません。
+- **ルールファイルの追加更新支援**: 将来的にCLIを拡張し、新しいルールテンプレートを追加生成するコマンド（例えば `crules add rule-name` でプリセットのルールファイルを追加）や、既存ファイルのアップデート支援（例えばコーディング規約アップデートウィザード）を提供することも検討できます。CursorのAI自体もルール変更提案を行う可能性があるため、**人間とAIの双方からルールベースを拡充できる仕組み**を意識しています。
+- **他ツールとの連携**: Ruby製CLIである`crules`は今後、プロジェクト作成スクリプトやIDEテンプレートと連携して自動実行することも視野に入れます。Flutterアプリ作成時に自動で`crules init`が走るようにすれば、開発者がルール整備を失念することも防げます。
+
+最後に、`crules`が生成する内容は**スタート地点**に過ぎません。プロジェクトの成長に合わせてルールファイルも進化させることで、Cursor AIのサポート精度はより高まっていきます。適切に構造化された.mdスニペット（YAML + Markdown）のおかげで、AIはコードだけでなく設計思想や過去の経緯まで踏まえた「文脈理解」をしてくれるでしょう ([Cursor Rules: Enhance Your Development Workflow with AI-Powered Coding | cursor101.com](https://cursor101.com/cursor/rules#:~:text=Project,be%20automatically%20included%20when%20needed)) ([tip: Cursor Rules .mdc files may be created/updated dynamically with your… | Adam Gospodarczyk](https://www.linkedin.com/posts/overment_tip-cursor-rules-mdc-files-may-be-created-activity-7306675943396302848-NXRI#:~:text=tip%3A%20Cursor%20Rules%20,I%20chat%20with%20certain%20files))。このように、人間の知見を埋め込んだルールファイル群を初期生成し育てていくことが、FlutterプロジェクトにおけるCursor活用のキーとなります。
+
+**参考文献:**
+
+- Cursor公式ドキュメント・コミュニティより: Cursorルールファイル(.mdc)の構造と運用 ([justdo/.cursor/rules/999-mdc-format.mdc at master · justdoinc/justdo · GitHub](https://github.com/justdoinc/justdo/blob/master/.cursor/rules/999-mdc-format.mdc#:~:text=)) ([justdo/.cursor/rules/999-mdc-format.mdc at master · justdoinc/justdo · GitHub](https://github.com/justdoinc/justdo/blob/master/.cursor/rules/999-mdc-format.mdc#:~:text=After%20the%20frontmatter%2C%20the%20rest,file%20should%20be%20valid%20Markdown)),  ([justdo/.cursor/rules/999-mdc-format.mdc at master · justdoinc/justdo · GitHub](https://github.com/justdoinc/justdo/blob/master/.cursor/rules/999-mdc-format.mdc#:~:text=,applicable%20to%20the%20user%20request)) ([justdo/.cursor/rules/999-mdc-format.mdc at master · justdoinc/justdo · GitHub](https://github.com/justdoinc/justdo/blob/master/.cursor/rules/999-mdc-format.mdc#:~:text=only%20applied%20with%20relevant%20files))
+- Dart/Flutterスタイルガイド: Effective Dart, Flutter公式ベストプラクティス ([Effective Dart: Style | Dart](https://dart.dev/effective-dart/style#:~:text=,lines%2080%20characters%20or%20fewer)) ([Flutter and Dart: Best Practices in Coding Standards | by Jai-Techie | Medium](https://medium.com/@jaitechie05/flutter-and-dart-best-practices-in-coding-standards-a53a249d7a83#:~:text=1,Style)), コミュニティによるコーディング規約例 ([Flutter Cursor Rules | CursorRule](https://cursorrule.com/posts/flutter-cursor-rules#:~:text=Nomenclature))
+- Cursorユーザ事例: AIアシスタントの行動指針やルール自動更新提案の考え方 ([Mastering Cursor Rules: A Developer's Guide to Smart AI Integration - DEV Community](https://dev.to/dpaluy/mastering-cursor-rules-a-developers-guide-to-smart-ai-integration-1k65#:~:text=,Question%20every%20assumption%20and%20inference))
+- エラーログ運用: Cursorでのログ自動コンテキスト投入のTips ([tip: Cursor Rules .mdc files may be created/updated dynamically with your… | Adam Gospodarczyk](https://www.linkedin.com/posts/overment_tip-cursor-rules-mdc-files-may-be-created-activity-7306675943396302848-NXRI#:~:text=tip%3A%20Cursor%20Rules%20,I%20chat%20with%20certain%20files)), ルールファイル配置・命名に関する議論 ([Optimal structure for .mdc rules files - Discussion - Cursor - Community Forum](https://forum.cursor.com/t/optimal-structure-for-mdc-rules-files/52260#:~:text=2,descriptive%20of%20the%20rule%27s%20purpose))など.
