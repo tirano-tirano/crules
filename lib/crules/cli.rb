@@ -1,133 +1,98 @@
 # frozen_string_literal: true
 
 require "thor"
-require "pastel"
-require "crules/version"
 require "fileutils"
+require "pathname"
+require_relative "version"
 
 module Crules
   class CLI < Thor
-    package_name "crules"
-
     AVAILABLE_FRAMEWORKS = {
       "flutter" => "Flutterプロジェクト用のテンプレート",
       "default" => "汎用的なテンプレート"
     }.freeze
 
-    def initialize(*args)
-      super
-      @pastel = Pastel.new
-      @options = {}
-    end
-
-    attr_writer :options
+    class_option :framework, type: :string, default: "default"
+    class_option :force, type: :boolean, default: false
 
     desc "version", "バージョン情報を表示"
     def version
-      puts "crules v#{VERSION}"
+      puts "crules v#{Crules::VERSION}"
     end
-    map %w[--version -v] => :version
 
     desc "init", "Cursorルールを初期化"
-    method_option :force, type: :boolean, default: false, aliases: "-f",
-                 desc: "既存のファイルを上書き"
-    method_option :framework, type: :string, default: "default",
-                 desc: "使用するフレームワークを指定 (flutter, default)"
-    def init(*args)
-      puts @pastel.green("🚀 Cursorルールの初期化を開始します...")
+    def init
+      puts "🚀 Cursorルールの初期化を開始します..."
 
-      framework = @options["framework"] || options[:framework]
+      framework = options[:framework]
       unless AVAILABLE_FRAMEWORKS.key?(framework)
-        puts @pastel.red("❌ 無効なフレームワークです: #{framework}")
+        puts "❌ 無効なフレームワークです: #{framework}"
         puts "利用可能なフレームワーク:"
-        AVAILABLE_FRAMEWORKS.each do |name, desc|
-          puts "  - #{name}: #{desc}"
+        AVAILABLE_FRAMEWORKS.each do |name, description|
+          puts "  - #{name}: #{description}"
         end
         exit 1
       end
 
-      puts @pastel.green("📦 フレームワーク: #{framework} (#{AVAILABLE_FRAMEWORKS[framework]})")
+      rules_dir = File.join(Dir.pwd, ".cursor", "rules")
+      FileUtils.mkdir_p(rules_dir)
 
-      create_rules_directory
-      copy_template_files(framework)
-
-      puts "\n" + @pastel.green("✨ 初期化が完了しました！")
+      copy_template_files(framework, rules_dir)
+      puts "✅ Cursorルールの初期化が完了しました"
     end
 
-    desc "add RULE_NAME", "新しいルールファイルを追加"
-    method_option :force, type: :boolean, default: false, aliases: "-f",
-                 desc: "既存のファイルを上書き"
-    method_option :framework, type: :string, default: "default",
-                 desc: "使用するフレームワークを指定 (flutter, default)"
-    def add(rule_name, *args)
-      framework = @options["framework"] || options[:framework]
-      unless AVAILABLE_FRAMEWORKS.key?(framework)
-        puts @pastel.red("❌ 無効なフレームワークです: #{framework}")
-        puts "利用可能なフレームワーク:"
-        AVAILABLE_FRAMEWORKS.each do |name, desc|
-          puts "  - #{name}: #{desc}"
-        end
+    desc "add <rule_name>", "新しいルールを追加"
+    def add(rule_name)
+      rules_dir = File.join(Dir.pwd, ".cursor", "rules")
+      unless Dir.exist?(rules_dir)
+        puts "❌ .cursor/rulesディレクトリが見つかりません"
+        puts "先に`crules init`を実行してください"
         exit 1
       end
 
-      template_path = File.join(templates_dir, framework, "rule_template.md")
-      target_path = File.join(rules_dir, "#{rule_name}.mdc")
-      
-      if File.exist?(target_path) && !(@options["force"] || options[:force])
-        puts @pastel.red("❌ ルール '#{rule_name}' は既に存在します。上書きするには --force オプションを使用してください。")
+      rule_file = File.join(rules_dir, "#{rule_name}.mdc")
+      if File.exist?(rule_file) && !options[:force]
+        puts "❌ ルールファイルが既に存在します: #{rule_file}"
+        puts "上書きする場合は`--force`オプションを使用してください"
         exit 1
       end
 
-      copy_with_extension(template_path, target_path)
-      puts @pastel.green("✨ ルール '#{rule_name}' を作成しました。")
+      template_file = File.join(File.dirname(__FILE__), "templates", "default", "rule_template.md")
+      unless File.exist?(template_file)
+        puts "❌ テンプレートファイルが見つかりません: #{template_file}"
+        exit 1
+      end
+
+      FileUtils.cp(template_file, rule_file)
+      puts "✅ ルールファイルを作成しました: #{rule_file}"
     end
 
     private
 
-    def create_rules_directory
-      FileUtils.mkdir_p(rules_dir)
-      FileUtils.mkdir_p(File.join(rules_dir, "errors"))
-      puts @pastel.green("📁 ディレクトリを作成しました: #{rules_dir}")
-    end
-
-    def copy_template_files(framework)
-      puts "\n📝 テンプレートファイルをコピーしています..."
-
-      template_files = Dir[File.join(templates_dir, framework, "*.md")]
-      template_files.each do |template|
-        filename = File.basename(template, ".md")
-        target = if filename == "error_logging_guide"
-                  File.join(rules_dir, "errors", "#{filename}.mdc")
-                else
-                  File.join(rules_dir, "#{filename}.mdc")
-                end
-
-        if File.exist?(target) && !(@options["force"] || options[:force])
-          puts @pastel.yellow("⚠️ ファイルが既に存在します: #{target}")
-          next
-        end
-
-        copy_with_extension(template, target)
-        puts @pastel.green("✨ テンプレートをコピーしました: #{target}")
+    def copy_template_files(framework, target_dir)
+      source_dir = File.join(File.dirname(__FILE__), "templates", framework)
+      unless Dir.exist?(source_dir)
+        puts "❌ テンプレートディレクトリが見つかりません: #{source_dir}"
+        exit 1
       end
 
-      # rule_template.mdを必ずコピー
-      template_path = File.join(templates_dir, framework, "rule_template.md")
-      target_path = File.join(rules_dir, "rule_template.mdc")
-      copy_with_extension(template_path, target_path)
-    end
+      # ディレクトリ構造を保持しながら、.mdファイルを.mdcにコピー
+      Dir.glob(File.join(source_dir, "**", "*.md")).each do |source_file|
+        relative_path = Pathname.new(source_file).relative_path_from(Pathname.new(source_dir))
+        target_file = File.join(target_dir, relative_path.to_s.sub(/\.md$/, ".mdc"))
+        target_dir_path = File.dirname(target_file)
 
-    def copy_with_extension(source, target)
-      FileUtils.mkdir_p(File.dirname(target))
-      FileUtils.cp(source, target)
-    end
+        # 既存のファイルをチェック
+        if File.exist?(target_file) && !options[:force]
+          puts "❌ ファイルが既に存在します: #{target_file}"
+          puts "上書きする場合は`--force`オプションを使用してください"
+          exit 1
+        end
 
-    def rules_dir
-      File.join(Dir.pwd, ".cursor", "rules")
-    end
-
-    def templates_dir
-      File.join(File.dirname(__FILE__), "templates")
+        # ディレクトリを作成してファイルをコピー
+        FileUtils.mkdir_p(target_dir_path)
+        FileUtils.cp(source_file, target_file)
+      end
     end
   end
 end 
