@@ -2,8 +2,8 @@
 
 class Crules < Formula
   desc "Flutterプロジェクト用のCursorルール（.mdcファイル）を生成・管理するためのコマンドラインツール"
-  homepage "https://github.com/yourusername/crules"
-  url "https://github.com/yourusername/crules/archive/refs/tags/v0.1.0.tar.gz"
+  homepage "https://github.com/tirano-tirano/crules"
+  url "https://github.com/tirano-tirano/crules/archive/refs/tags/v0.1.0.tar.gz"
   sha256 "YOUR_SHA256_HASH" # リリース時に更新が必要
 
   depends_on "ruby"
