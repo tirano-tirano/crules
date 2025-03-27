@@ -1,6 +1,9 @@
 # frozen_string_literal: true
 
+require "thor"
 require "pastel"
+require "crules/version"
+require "fileutils"
 
 module Crules
   class CLI < Thor
@@ -14,7 +17,10 @@ module Crules
     def initialize(*args)
       super
       @pastel = Pastel.new
+      @options = {}
     end
+
+    attr_writer :options
 
     desc "version", "バージョン情報を表示"
     def version
@@ -27,10 +33,10 @@ module Crules
                  desc: "既存のファイルを上書き"
     method_option :framework, type: :string, default: "default",
                  desc: "使用するフレームワークを指定 (flutter, default)"
-    def init
+    def init(*args)
       puts @pastel.green("🚀 Cursorルールの初期化を開始します...")
 
-      framework = options[:framework]
+      framework = @options["framework"] || options[:framework]
       unless AVAILABLE_FRAMEWORKS.key?(framework)
         puts @pastel.red("❌ 無効なフレームワークです: #{framework}")
         puts "利用可能なフレームワーク:"
@@ -53,8 +59,8 @@ module Crules
                  desc: "既存のファイルを上書き"
     method_option :framework, type: :string, default: "default",
                  desc: "使用するフレームワークを指定 (flutter, default)"
-    def add(rule_name)
-      framework = options[:framework]
+    def add(rule_name, *args)
+      framework = @options["framework"] || options[:framework]
       unless AVAILABLE_FRAMEWORKS.key?(framework)
         puts @pastel.red("❌ 無効なフレームワークです: #{framework}")
         puts "利用可能なフレームワーク:"
@@ -67,7 +73,7 @@ module Crules
       template_path = File.join(templates_dir, framework, "rule_template.md")
       target_path = File.join(rules_dir, "#{rule_name}.mdc")
       
-      if File.exist?(target_path) && !options[:force]
+      if File.exist?(target_path) && !(@options["force"] || options[:force])
         puts @pastel.red("❌ ルール '#{rule_name}' は既に存在します。上書きするには --force オプションを使用してください。")
         exit 1
       end
@@ -96,18 +102,24 @@ module Crules
                   File.join(rules_dir, "#{filename}.mdc")
                 end
 
-        if File.exist?(target) && !options[:force]
-          puts "  ⏩ #{filename}.mdc (スキップ: 既に存在します)"
-        else
-          copy_with_extension(template, target)
-          puts "  ✅ #{filename}.mdc"
+        if File.exist?(target) && !(@options["force"] || options[:force])
+          puts @pastel.yellow("⚠️ ファイルが既に存在します: #{target}")
+          next
         end
+
+        copy_with_extension(template, target)
+        puts @pastel.green("✨ テンプレートをコピーしました: #{target}")
       end
+
+      # rule_template.mdを必ずコピー
+      template_path = File.join(templates_dir, framework, "rule_template.md")
+      target_path = File.join(rules_dir, "rule_template.mdc")
+      copy_with_extension(template_path, target_path)
     end
 
     def copy_with_extension(source, target)
-      content = File.read(source)
-      File.write(target, content)
+      FileUtils.mkdir_p(File.dirname(target))
+      FileUtils.cp(source, target)
     end
 
     def rules_dir
@@ -115,7 +127,7 @@ module Crules
     end
 
     def templates_dir
-      File.expand_path("../crules/templates", File.dirname(__FILE__))
+      File.join(File.dirname(__FILE__), "templates")
     end
   end
 end 
