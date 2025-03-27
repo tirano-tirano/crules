@@ -3,35 +3,29 @@
 require_relative "lib/crules/version"
 
 Gem::Specification.new do |spec|
-  spec.name = "crules"
-  spec.version = Crules::VERSION
-  spec.authors = ["Your Name"]
-  spec.email = ["your.email@example.com"]
+  spec.name          = "crules"
+  spec.version       = Crules::VERSION
+  spec.authors       = ["tirano-tirano"]
+  spec.email         = ["tirano.tirano@gmail.com"]
 
-  spec.summary = "Generate Cursor rule files for Flutter projects"
-  spec.description = "A command-line tool to generate and manage Cursor rule files (.mdc) for Flutter projects"
-  spec.homepage = "https://github.com/yourusername/crules"
-  spec.license = "MIT"
+  spec.summary       = "A command-line tool to generate and manage Cursor rules (.mdc files) for various frameworks"
+  spec.description   = "A command-line tool to generate and manage Cursor rules (.mdc files) for various frameworks"
+  spec.homepage      = "https://github.com/tirano-tirano/crules"
+  spec.license       = "MIT"
   spec.required_ruby_version = ">= 2.6.0"
 
   spec.metadata["homepage_uri"] = spec.homepage
-  spec.metadata["source_code_uri"] = "https://github.com/yourusername/crules"
+  spec.metadata["source_code_uri"] = spec.homepage
+  spec.metadata["changelog_uri"] = "#{spec.homepage}/blob/main/CHANGELOG.md"
 
-  # Specify which files should be added to the gem when it is released.
-  spec.files = Dir.glob(%w[
-    lib/**/*.rb
-    lib/**/*.md
-    bin/*
-    LICENSE.txt
-    README.md
-  ])
-  spec.bindir = "bin"
-  spec.executables = ["crules"]
+  spec.files = Dir.glob("{bin,lib}/**/*")
+  spec.bindir        = "bin"
+  spec.executables   = ["crules"]
   spec.require_paths = ["lib"]
 
   # Dependencies
-  spec.add_dependency "thor", "~> 1.3"
-  spec.add_dependency "colorize", "~> 1.1"
+  spec.add_dependency "thor", "~> 1.0"
+  spec.add_dependency "pastel", "~> 0.8"
 
   # Development dependencies
   spec.add_development_dependency "rake", "~> 13.0"
