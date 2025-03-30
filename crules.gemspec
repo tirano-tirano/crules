@@ -9,7 +9,7 @@ Gem::Specification.new do |spec|
   spec.email         = ["john.smith@example.com"]
 
   spec.summary       = "Cursorルールを管理するためのCLIツール"
-  spec.description   = "Flutterプロジェクトを含む、様々なフレームワークのCursorルールを管理するためのコマンドラインツール"
+  spec.description   = "プロジェクトタイプに応じたルールセットを管理するためのコマンドラインツール。Flutterプロジェクトを含む、様々なプロジェクトタイプに対応。"
   spec.homepage      = "https://github.com/johnsmith/crules"
   spec.license       = "MIT"
   spec.required_ruby_version = ">= 2.6.0"
@@ -19,8 +19,8 @@ Gem::Specification.new do |spec|
   spec.metadata["changelog_uri"] = "#{spec.homepage}/blob/main/CHANGELOG.md"
 
   spec.files = Dir.glob("{bin,lib}/**/*")
-  spec.bindir        = "exe"
-  spec.executables   = spec.files.grep(%r{^exe/}) { |f| File.basename(f) }
+  spec.bindir        = "bin"
+  spec.executables   = spec.files.grep(%r{^bin/}) { |f| File.basename(f) }
   spec.require_paths = ["lib"]
 
   spec.add_dependency "thor", "~> 1.0"
