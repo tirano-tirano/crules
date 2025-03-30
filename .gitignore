@@ -1,3 +1,9 @@
+# Cursor IDE
+.cursor/*
+!.cursor/rules/
+!.cursor/rules/*.md
+!.cursor/rules/errors/*.md
+
 # Ruby
 *.gem
 *.rbc
@@ -85,4 +91,7 @@ yarn.lock
 # macOS
 .AppleDouble
 .LSOverride
-._* 
+._*
+
+# RSpec JUnit output
+rspec.xml 
