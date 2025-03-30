@@ -1,6 +1,9 @@
 # IDE and Editor Settings
 ## Cursor IDE
-# Cursor IDEの設定ファイルを除外（ルールファイルは除く）
+# Cursor IDEの設定ファイルを除外します
+# - .cursor/以下のファイルは基本的に除外
+# - ただし、プロジェクトで共有すべきルールファイル（.mdc）は除外から除外
+# - バックアップファイルは除外（.mdc.bak, .mdc~）
 .cursor/*
 !.cursor/rules/
 !.cursor/rules/*.mdc
@@ -9,7 +12,9 @@
 *.mdc~
 
 ## Other IDEs
-# 一般的なエディタの設定ファイルを除外
+# 一般的なエディタの設定ファイルを除外します
+# - IDEの設定ファイルはローカル環境に依存するため除外
+# - 各エディタの一時ファイルも除外
 .idea/
 .vscode/
 *.swp
@@ -17,7 +22,11 @@
 
 # Ruby Environment
 ## Package and Dependencies
-# Rubyのパッケージ関連ファイルを除外
+# Rubyのパッケージ関連ファイルを除外します
+# - ビルドされたgemファイル
+# - gemspecのバックアップファイル
+# - bundlerの依存関係ファイル
+# - vendorディレクトリ（依存ライブラリのインストール先）
 *.gem
 *.gemspec.bak
 *.rbc
@@ -28,7 +37,10 @@ Gemfile.lock
 /pkg/
 
 ## Environment Management
-# 環境設定ファイルを除外（サンプルファイルは除く）
+# 環境設定ファイルを除外します
+# - Rubyのバージョン管理ファイル
+# - 環境変数設定ファイル（.envサンプルは除く）
+# - RVM（Ruby Version Manager）の設定
 .ruby-version
 .ruby-gemset
 .rvm/
@@ -37,7 +49,10 @@ Gemfile.lock
 !.env.example
 
 ## Test and Coverage
-# テストとカバレッジレポートを除外
+# テストとカバレッジレポートを除外します
+# - カバレッジレポートは自動生成されるため除外
+# - テスト実行時の一時ファイル
+# - RSpecのJUnitフォーマットレポート
 /coverage/
 /spec/reports/
 /spec/examples.txt
@@ -46,13 +61,19 @@ Gemfile.lock
 rspec.xml
 
 ## Documentation
-# 自動生成されるドキュメントを除外
+# 自動生成されるドキュメントを除外します
+# - RDocやYARDで生成されるドキュメント
+# - bundlerのマニュアルページ
 /doc/
 /docs/_build/
 /lib/bundler/man/
 
 ## Temporary and Build Files
-# 一時ファイルとビルド成果物を除外
+# 一時ファイルとビルド成果物を除外します
+# - 一時ディレクトリ
+# - ビルド出力ディレクトリ
+# - ログファイル
+# - エディタの一時ファイル
 /tmp/
 /build/
 /dist/
@@ -65,7 +86,10 @@ rspec.xml
 
 # OS Generated Files
 ## macOS
-# macOS固有の一時ファイルを除外
+# macOS固有の一時ファイルを除外します
+# - Finderのメタデータ
+# - サムネイルキャッシュ
+# - リソースフォーク
 .DS_Store
 .DS_Store?
 .AppleDouble
@@ -75,10 +99,13 @@ rspec.xml
 .Trashes
 
 ## Windows
-# Windows固有の一時ファイルを除外
+# Windows固有の一時ファイルを除外します
+# - サムネイルデータベース
+# - システムファイル
 Thumbs.db
 ehthumbs.db
 
 # Project Specific
-# プロジェクト固有の一時ファイルを除外
+# プロジェクト固有の一時ファイルを除外します
+# - gemのインストール時に生成されるファイル
 /InstalledFiles/
