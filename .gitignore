@@ -4,6 +4,8 @@
 !.cursor/rules/
 !.cursor/rules/*.mdc
 !.cursor/rules/errors/*.mdc
+*.mdc.bak
+*.mdc~
 
 ## Other IDEs
 .idea/
@@ -14,7 +16,9 @@
 # Ruby Environment
 ## Package and Dependencies
 *.gem
+*.gemspec.bak
 *.rbc
+Gemfile.lock
 /.bundle/
 /vendor/bundle
 /vendor/
