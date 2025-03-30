@@ -1,97 +1,72 @@
-# Cursor IDE
+# IDE and Editor Settings
+## Cursor IDE
 .cursor/*
 !.cursor/rules/
 !.cursor/rules/*.mdc
 !.cursor/rules/errors/*.mdc
 
-# Ruby
-*.gem
-*.rbc
-/.config
-/coverage/
-/InstalledFiles
-/pkg/
-/spec/reports/
-/spec/examples.txt
-/test/tmp/
-/test/version_tmp/
-/tmp/
-
-# Bundler
-/.bundle/
-/vendor/bundle
-
-# Environment
-.env
-.env.*
-
-# IDE
+## Other IDEs
 .idea/
 .vscode/
 *.swp
 *.swo
 
-# OS
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
+# Ruby Environment
+## Package and Dependencies
+*.gem
+*.rbc
+/.bundle/
+/vendor/bundle
+/vendor/
+/pkg/
 
-# Project specific
-.cursor/
-
-# Environment normalization
-/lib/bundler/man/
-
-# RVM
-.rvm/
-
-# Ruby Version Manager
+## Environment Management
 .ruby-version
 .ruby-gemset
-
-# Logs
-*.log
-/logs/
-
-# Local development
+.rvm/
+.env
+.env.*
 !.env.example
 
-# Build artifacts
+## Test and Coverage
+/coverage/
+/spec/reports/
+/spec/examples.txt
+/test/tmp/
+/test/version_tmp/
+rspec.xml
+
+## Documentation
+/doc/
+/docs/_build/
+/lib/bundler/man/
+
+## Temporary and Build Files
+/tmp/
 /build/
 /dist/
 /out/
-
-# Temporary files
 *.tmp
 *.temp
 *~
+*.log
+/logs/
 
-# Ruby specific
-.bundle/
-vendor/
-.ruby-version
-.ruby-gemset
-
-# Test coverage
-/coverage/
-/test/tmp/
-
-# Documentation
-/doc/
-/docs/_build/
-
-# Package manager
-package-lock.json
-yarn.lock
-
-# macOS
+# OS Generated Files
+## macOS
+.DS_Store
+.DS_Store?
 .AppleDouble
 .LSOverride
 ._*
+.Spotlight-V100
+.Trashes
 
-# RSpec JUnit output
-rspec.xml 
+## Windows
+Thumbs.db
+ehthumbs.db
+
+# Project Specific
+/InstalledFiles/
+/package-lock.json
+/yarn.lock 
