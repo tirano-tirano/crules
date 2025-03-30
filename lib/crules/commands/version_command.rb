@@ -24,6 +24,8 @@ module Crules
       # @return [void]
       def execute
         puts "crules #{Crules::VERSION}"
+        puts "Ruby #{RUBY_VERSION}"
+        puts "実行環境: #{RUBY_PLATFORM}"
       end
     end
   end
