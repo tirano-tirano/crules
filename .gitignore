@@ -157,6 +157,45 @@ Thumbs.db
 ehthumbs.db
 
 # Project Specific
-# プロジェクト固有の一時ファイルを除外します
+## Core Application Files
+# プロジェクト固有のファイルを除外します
+# [開発環境]
 # - gemのインストール時に生成されるファイル
+# - ローカル開発用の設定ファイル
+# - デバッグ用の一時ファイル
 /InstalledFiles/
+/local_settings.yml
+/debug.log
+/debug/*.log
+
+## Generated Content
+# 自動生成されるコンテンツを除外します
+# [生成ファイル]
+# - ルール関連の一時ファイル
+# - バックアップファイル
+# - キャッシュファイル
+.cursor/rules/**/*.bak
+.cursor/rules/**/*.tmp
+.cursor/rules/**/_cache/
+.cursor/rules/**/backup/
+
+## Development Tools
+# 開発ツール関連のファイルを除外します
+# [開発補助]
+# - デバッガの設定ファイル
+# - プロファイラの出力
+# - ローカルツールの設定
+.byebug_history
+.pry_history
+/profiler/
+/.tool-versions
+
+## Custom Extensions
+# プロジェクト独自の拡張機能関連ファイルを除外します
+# [拡張機能]
+# - カスタムルールの一時ファイル
+# - プラグインの設定ファイル
+# - ローカルでの拡張設定
+/extensions/**/*.local
+/plugins/**/*.local
+/custom/**/*.local
