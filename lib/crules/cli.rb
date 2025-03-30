@@ -3,7 +3,11 @@
 require "thor"
 require "fileutils"
 require "pathname"
+
 require_relative "version"
+require_relative "commands/init_command"
+require_relative "commands/add_command"
+require_relative "commands/version_command"
 
 module Crules
   class CLI < Thor
@@ -41,51 +45,20 @@ module Crules
 
     desc "version", "バージョン表示"
     def version
-      puts "crules #{Crules::VERSION}"
+      Commands::VersionCommand.new.execute
     end
 
     desc "init [--rule-set <rule_set>] [--force]", "ルールセットの初期化"
     method_option :rule_set, type: :string, default: "default", desc: "使用するルールセット"
     method_option :force, type: :boolean, default: false, desc: "既存のファイルを上書き"
-
     def init
-      rule_set = options[:rule_set]
-      available_rule_sets = find_available_rule_sets
-
-      unless available_rule_sets.key?(rule_set)
-        puts "エラー: 無効なルールセット '#{rule_set}'"
-        puts "利用可能なルールセット:"
-        available_rule_sets.each do |name, desc|
-          puts "  #{name}: #{desc}"
-        end
-        exit 1
-      end
-
-      copy_rule_set(rule_set, options[:force])
-      puts "ルールセット '#{rule_set}' の初期化が完了しました"
+      Commands::InitCommand.new(options).execute
     end
 
     desc "add <rule_name> [--force]", "新規ルールの追加"
     method_option :force, type: :boolean, default: false, desc: "既存のファイルを上書き"
-
     def add(rule_name)
-      template_path = File.join(File.dirname(__FILE__), "templates", "rule-template.md")
-      target_path = File.join(".cursor", "rules", "#{rule_name}.mdc")
-
-      unless File.exist?(template_path)
-        puts "エラー: テンプレートファイルが見つかりません: #{template_path}"
-        exit 1
-      end
-
-      if File.exist?(target_path) && !options[:force]
-        puts "エラー: ファイルが既に存在します: #{target_path}"
-        puts "上書きするには --force オプションを使用してください"
-        exit 1
-      end
-
-      FileUtils.mkdir_p(File.dirname(target_path))
-      FileUtils.cp(template_path, target_path)
-      puts "ルールファイルを作成しました: #{target_path}"
+      Commands::AddCommand.new([rule_name], options).execute
     end
 
     private
