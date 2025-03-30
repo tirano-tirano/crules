@@ -1,8 +1,8 @@
 # Cursor IDE
 .cursor/*
 !.cursor/rules/
-!.cursor/rules/*.md
-!.cursor/rules/errors/*.md
+!.cursor/rules/*.mdc
+!.cursor/rules/errors/*.mdc
 
 # Ruby
 *.gem
