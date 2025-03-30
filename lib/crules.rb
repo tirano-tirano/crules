@@ -6,7 +6,9 @@ require "json"
 
 require_relative "crules/version"
 require_relative "crules/cli"
+require_relative "crules/commands/base_command"
 require_relative "crules/commands/list_command"
+require_relative "crules/commands/remove_command"
 
 module Crules
   class Error < StandardError; end
