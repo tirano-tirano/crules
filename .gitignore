@@ -1,15 +1,34 @@
 # IDE and Editor Settings
 ## Cursor IDE
 # Cursor IDEの設定ファイルを除外します
+# [ディレクトリ構造]
+# .cursor/
+# ├── rules/          ... プロジェクトルールの格納ディレクトリ
+# │   ├── NN-*.mdc    ... 通常のルールファイル（NNは2桁の数字）
+# │   └── errors/     ... エラー関連のルール格納ディレクトリ
+# └── その他          ... その他のCursor IDE設定（除外対象）
+#
+# [除外設定]
 # - .cursor/以下のファイルは基本的に除外
 # - ただし、プロジェクトで共有すべきルールファイル（.mdc）は除外から除外
-# - バックアップファイルは除外（.mdc.bak, .mdc~）
+# - バックアップファイルは除外
 .cursor/*
 !.cursor/rules/
 !.cursor/rules/*.mdc
+!.cursor/rules/errors/
 !.cursor/rules/errors/*.mdc
+
+# バックアップファイル・一時ファイルの除外
 *.mdc.bak
 *.mdc~
+*.mdc.tmp
+*.mdc.temp
+*~.mdc
+.#*.mdc
+
+# 将来的な拡張用
+!.cursor/rules/*/
+!.cursor/rules/*/*.mdc
 
 ## Other IDEs
 # 一般的なエディタの設定ファイルを除外します
