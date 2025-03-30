@@ -10,15 +10,23 @@ class Crules < Formula
     ENV["GEM_HOME"] = libexec
     ENV["GEM_PATH"] = libexec
     ENV["BUNDLE_GEMFILE"] = "#{buildpath}/Gemfile"
+    ENV["BUNDLE_PATH"] = "#{libexec}/vendor/bundle"
 
     system "gem", "install", "bundler"
-    system "bundle", "config", "set", "--local", "path", "#{libexec}/vendor/bundle"
     system "bundle", "install"
     system "bundle", "exec", "gem", "build", "crules.gemspec"
-    system "bundle", "exec", "gem", "install", "--local", "crules-#{version}.gem"
+    system "bundle", "exec", "gem", "install", "--ignore-dependencies", "--no-document", "--install-dir", libexec, "crules-#{version}.gem"
 
-    bin.install Dir["#{libexec}/bin/*"]
-    bin.env_script_all_files(libexec/"bin", GEM_HOME: ENV["GEM_HOME"], GEM_PATH: ENV["GEM_PATH"], BUNDLE_GEMFILE: ENV["BUNDLE_GEMFILE"])
+    (bin/"crules").write <<~EOS
+      #!/bin/bash
+      export GEM_HOME="#{libexec}"
+      export GEM_PATH="#{libexec}"
+      export BUNDLE_GEMFILE="#{prefix}/Gemfile"
+      export BUNDLE_PATH="#{libexec}/vendor/bundle"
+      exec "#{libexec}/bin/crules" "$@"
+    EOS
+
+    prefix.install "Gemfile", "Gemfile.lock"
   end
 
   test do
