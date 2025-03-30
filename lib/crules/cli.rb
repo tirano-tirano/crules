@@ -7,90 +7,158 @@ require_relative "version"
 
 module Crules
   class CLI < Thor
-    AVAILABLE_FRAMEWORKS = {
-      "flutter" => "Flutterプロジェクト用のテンプレート",
-      "default" => "汎用的なテンプレート"
+    # プロジェクトルートの判定に使用するファイルやディレクトリ
+    PROJECT_ROOT_INDICATORS = {
+      # バージョン管理システム
+      ".git" => :directory,
+      ".svn" => :directory,
+      ".hg" => :directory,
+      # パッケージマネージャー
+      "package.json" => :file,
+      "pubspec.yaml" => :file,
+      "Cargo.toml" => :file,
+      "Gemfile" => :file,
+      "requirements.txt" => :file,
+      "pyproject.toml" => :file,
+      "composer.json" => :file,
+      "go.mod" => :file,
+      # ビルドシステム
+      "Makefile" => :file,
+      "CMakeLists.txt" => :file,
+      "build.gradle" => :file,
+      "pom.xml" => :file,
+      # IDE/エディタ
+      ".idea" => :directory,
+      ".vscode" => :directory,
+      ".cursor" => :directory
     }.freeze
 
-    class_option :framework, type: :string, default: "default"
-    class_option :force, type: :boolean, default: false
-
-    desc "version", "バージョン情報を表示"
-    def version
-      puts "crules v#{Crules::VERSION}"
+    def self.exit_on_failure?
+      true
     end
 
-    desc "init", "Cursorルールを初期化"
-    def init
-      puts "🚀 Cursorルールの初期化を開始します..."
+    package_name "crules"
 
-      framework = options[:framework]
-      unless AVAILABLE_FRAMEWORKS.key?(framework)
-        puts "❌ 無効なフレームワークです: #{framework}"
-        puts "利用可能なフレームワーク:"
-        AVAILABLE_FRAMEWORKS.each do |name, description|
-          puts "  - #{name}: #{description}"
+    desc "version", "バージョン表示"
+    def version
+      puts "crules #{Crules::VERSION}"
+    end
+
+    desc "init [--rule-set <rule_set>] [--force]", "ルールセットの初期化"
+    method_option :rule_set, type: :string, default: "default", desc: "使用するルールセット"
+    method_option :force, type: :boolean, default: false, desc: "既存のファイルを上書き"
+
+    def init
+      rule_set = options[:rule_set]
+      available_rule_sets = find_available_rule_sets
+
+      unless available_rule_sets.key?(rule_set)
+        puts "エラー: 無効なルールセット '#{rule_set}'"
+        puts "利用可能なルールセット:"
+        available_rule_sets.each do |name, desc|
+          puts "  #{name}: #{desc}"
         end
         exit 1
       end
 
-      rules_dir = File.join(Dir.pwd, ".cursor", "rules")
-      FileUtils.mkdir_p(rules_dir)
-
-      copy_template_files(framework, rules_dir)
-      puts "✅ Cursorルールの初期化が完了しました"
+      copy_rule_set(rule_set, options[:force])
+      puts "ルールセット '#{rule_set}' の初期化が完了しました"
     end
 
-    desc "add <rule_name>", "新しいルールを追加"
+    desc "add <rule_name> [--force]", "新規ルールの追加"
+    method_option :force, type: :boolean, default: false, desc: "既存のファイルを上書き"
+
     def add(rule_name)
-      rules_dir = File.join(Dir.pwd, ".cursor", "rules")
-      unless Dir.exist?(rules_dir)
-        puts "❌ .cursor/rulesディレクトリが見つかりません"
-        puts "先に`crules init`を実行してください"
+      template_path = File.join(File.dirname(__FILE__), "templates", "rule-template.md")
+      target_path = File.join(".cursor", "rules", "#{rule_name}.mdc")
+
+      unless File.exist?(template_path)
+        puts "エラー: テンプレートファイルが見つかりません: #{template_path}"
         exit 1
       end
 
-      rule_file = File.join(rules_dir, "#{rule_name}.mdc")
-      if File.exist?(rule_file) && !options[:force]
-        puts "❌ ルールファイルが既に存在します: #{rule_file}"
-        puts "上書きする場合は`--force`オプションを使用してください"
+      if File.exist?(target_path) && !options[:force]
+        puts "エラー: ファイルが既に存在します: #{target_path}"
+        puts "上書きするには --force オプションを使用してください"
         exit 1
       end
 
-      template_file = File.join(File.dirname(__FILE__), "templates", "default", "rule_template.md")
-      unless File.exist?(template_file)
-        puts "❌ テンプレートファイルが見つかりません: #{template_file}"
-        exit 1
-      end
-
-      FileUtils.cp(template_file, rule_file)
-      puts "✅ ルールファイルを作成しました: #{rule_file}"
+      FileUtils.mkdir_p(File.dirname(target_path))
+      FileUtils.cp(template_path, target_path)
+      puts "ルールファイルを作成しました: #{target_path}"
     end
 
     private
 
-    def copy_template_files(framework, target_dir)
-      source_dir = File.join(File.dirname(__FILE__), "templates", framework)
-      unless Dir.exist?(source_dir)
-        puts "❌ テンプレートディレクトリが見つかりません: #{source_dir}"
+    def find_project_root
+      current_dir = Dir.pwd
+      loop do
+        # プロジェクトルートの判定
+        PROJECT_ROOT_INDICATORS.each do |indicator, type|
+          path = File.join(current_dir, indicator)
+          if (type == :directory && Dir.exist?(path)) || (type == :file && File.exist?(path))
+            puts "📂 プロジェクトルートを検出: #{current_dir}"
+            return current_dir
+          end
+        end
+
+        # 親ディレクトリに移動
+        parent_dir = File.dirname(current_dir)
+        break if parent_dir == current_dir
+        current_dir = parent_dir
+      end
+
+      puts "⚠️ プロジェクトルートが見つからないため、現在のディレクトリを使用します: #{Dir.pwd}"
+      Dir.pwd
+    end
+
+    def find_available_rule_sets
+      rule_sets = {}
+      templates_dir = File.join(File.dirname(__FILE__), "templates", "templates")
+
+      Dir.entries(templates_dir).each do |entry|
+        next if entry.start_with?(".")
+        next unless File.directory?(File.join(templates_dir, entry))
+
+        readme_path = File.join(templates_dir, entry, "README.md")
+        if File.exist?(readme_path)
+          content = File.read(readme_path)
+          if content =~ /^#\s+(.+)$/
+            rule_sets[entry] = $1.strip
+          else
+            rule_sets[entry] = entry
+          end
+        else
+          rule_sets[entry] = entry
+        end
+      end
+
+      rule_sets
+    end
+
+    def copy_rule_set(rule_set, force = false)
+      source_dir = File.join(File.dirname(__FILE__), "templates", "templates", rule_set)
+      target_dir = File.join(".cursor", "rules")
+
+      unless File.directory?(source_dir)
+        puts "エラー: ルールセットディレクトリが見つかりません: #{source_dir}"
         exit 1
       end
 
-      # ディレクトリ構造を保持しながら、.mdファイルを.mdcにコピー
-      Dir.glob(File.join(source_dir, "**", "*.md")).each do |source_file|
-        relative_path = Pathname.new(source_file).relative_path_from(Pathname.new(source_dir))
-        target_file = File.join(target_dir, relative_path.to_s.sub(/\.md$/, ".mdc"))
-        target_dir_path = File.dirname(target_file)
+      FileUtils.mkdir_p(target_dir)
 
-        # 既存のファイルをチェック
-        if File.exist?(target_file) && !options[:force]
-          puts "❌ ファイルが既に存在します: #{target_file}"
-          puts "上書きする場合は`--force`オプションを使用してください"
-          exit 1
+      Dir.glob(File.join(source_dir, "**", "*.md")).each do |source_file|
+        next if File.basename(source_file) == "README.md"
+        relative_path = Pathname.new(source_file).relative_path_from(Pathname.new(source_dir)).to_s
+        target_file = File.join(target_dir, relative_path.sub(/\.md$/, ".mdc"))
+
+        if File.exist?(target_file) && !force
+          puts "警告: ファイルが既に存在します: #{target_file}"
+          puts "スキップします。上書きするには --force オプションを使用してください"
+          next
         end
 
-        # ディレクトリを作成してファイルをコピー
-        FileUtils.mkdir_p(target_dir_path)
+        FileUtils.mkdir_p(File.dirname(target_file))
         FileUtils.cp(source_file, target_file)
       end
     end
