@@ -2,7 +2,7 @@ class Crules < Formula
   desc "Cursor IDEのルールを効率的に管理するためのCLIツール"
   homepage "https://github.com/tirano-tirano/crules"
   url "https://github.com/tirano-tirano/crules/archive/refs/tags/v0.2.2.tar.gz"
-  sha256 "8ed66d63db90152e4e4fb4aee627ef50a8708bdeab2a507ed145ea92de793188"
+  sha256 "6254ed22da8414bd101d3b5b7b4e3a94a45c18f2cd2c86e79935584445c4789b"
 
   depends_on "ruby"
 
