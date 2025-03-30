@@ -42,49 +42,81 @@
 # Ruby Environment
 ## Package and Dependencies
 # Rubyのパッケージ関連ファイルを除外します
-# - ビルドされたgemファイル
-# - gemspecのバックアップファイル
-# - bundlerの依存関係ファイル
-# - vendorディレクトリ（依存ライブラリのインストール先）
+# [パッケージ管理]
+# - ビルドされたgemファイル（*.gem）
+# - gemspecのバックアップと一時ファイル
+# - bundlerの設定と依存関係
+# - ベンダーライブラリ
 *.gem
 *.gemspec.bak
+*.gemspec.tmp
 *.rbc
 Gemfile.lock
 /.bundle/
 /vendor/bundle
 /vendor/
 /pkg/
+/.gem/
 
 ## Environment Management
 # 環境設定ファイルを除外します
-# - Rubyのバージョン管理ファイル
-# - 環境変数設定ファイル（.envサンプルは除く）
-# - RVM（Ruby Version Manager）の設定
+# [環境管理ツール]
+# - Ruby Version Manager (RVM)
+# - rbenv
+# - asdf
+# [環境変数]
+# - dotenv形式の環境設定（.envサンプルは除く）
+# - クレデンシャル関連
 .ruby-version
 .ruby-gemset
 .rvm/
+.rbenv/
+.rbenv-vars
+.ruby-version.local
 .env
 .env.*
 !.env.example
+.env.*.local
+/config/master.key
+/config/credentials/*.key
 
 ## Test and Coverage
 # テストとカバレッジレポートを除外します
-# - カバレッジレポートは自動生成されるため除外
-# - テスト実行時の一時ファイル
-# - RSpecのJUnitフォーマットレポート
+# [カバレッジツール]
+# - SimpleCov
+# - RCov
+# - Code Climate
+# [テストフレームワーク]
+# - RSpec
+# - Minitest
+# - Test::Unit
 /coverage/
+/coverage.data
+/.nyc_output/
 /spec/reports/
 /spec/examples.txt
+/spec/tmp/
 /test/tmp/
 /test/version_tmp/
+/test/reports/
 rspec.xml
+.rspec_status
+minitest.log
 
 ## Documentation
 # 自動生成されるドキュメントを除外します
-# - RDocやYARDで生成されるドキュメント
-# - bundlerのマニュアルページ
+# [ドキュメントツール]
+# - RDoc
+# - YARD
+# - API Blueprint
+# - Swagger/OpenAPI
 /doc/
 /docs/_build/
+/docs/_site/
+/.yardoc/
+/yard/
+/api_doc/
+/swagger/
 /lib/bundler/man/
 
 ## Temporary and Build Files
