@@ -8,10 +8,15 @@ class Crules < Formula
 
   def install
     ENV["GEM_HOME"] = libexec
+    ENV["GEM_PATH"] = libexec
+
+    system "gem", "install", "bundler"
+    system "bundle", "install"
     system "gem", "build", "crules.gemspec"
-    system "gem", "install", "crules-0.2.2.gem", "--install-dir", libexec
-    bin.install libexec/"bin/crules"
-    bin.env_script_all_files(libexec/"bin", GEM_HOME: ENV["GEM_HOME"])
+    system "gem", "install", "--local", "crules-#{version}.gem"
+
+    bin.install Dir["#{libexec}/bin/*"]
+    bin.env_script_all_files(libexec/"bin", GEM_HOME: ENV["GEM_HOME"], GEM_PATH: ENV["GEM_PATH"])
   end
 
   test do
