@@ -115,8 +115,8 @@ ehthumbs.db
 Thumbs.db
 
 # Project specific
-.cursor/
 .notes/
+.cursor/rules/
 template/
 target/
 *.mdc
