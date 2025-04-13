@@ -30,12 +30,18 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pip-
 
+      - name: Debug directory structure
+        run: |
+          pwd
+          ls -la
+          ls -la crules
+
       - name: Install dependencies
         run: |
           cd crules
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install -e .
+          pip install -e . --verbose
           pip install black isort flake8 pytest pytest-cov
 
       - name: Check code formatting with black
@@ -53,10 +59,16 @@ jobs:
           cd crules
           flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
 
+      - name: Debug test directory
+        run: |
+          cd crules
+          ls -la tests
+          ls -la tests/unit
+
       - name: Test with pytest and generate coverage report
         run: |
           cd crules
-          pytest tests/unit -v --cov=crules --cov-report=xml
+          python -m pytest tests/unit -v --cov=crules --cov-report=xml
 
       - name: Upload coverage report
         uses: codecov/codecov-action@v3
