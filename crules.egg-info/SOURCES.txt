@@ -1,0 +1,8 @@
+README.md
+setup.py
+crules.egg-info/PKG-INFO
+crules.egg-info/SOURCES.txt
+crules.egg-info/dependency_links.txt
+crules.egg-info/entry_points.txt
+crules.egg-info/requires.txt
+crules.egg-info/top_level.txt
