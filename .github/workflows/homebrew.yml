@@ -1,0 +1,61 @@
+name: Update Homebrew Tap
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  update-tap:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout tap
+        uses: actions/checkout@v3
+        with:
+          repository: tirano-tirano/homebrew-crules # タップリポジトリ
+          token: ${{ secrets.TAP_TOKEN }}
+          path: tap
+
+      - name: Get release info
+        id: release
+        run: |
+          echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          echo "url=https://github.com/tirano-tirano/crules/archive/refs/tags/${GITHUB_REF#refs/tags/}.tar.gz" >> $GITHUB_OUTPUT
+
+      - name: Calculate SHA256
+        id: sha
+        run: |
+          curl -sL ${{ steps.release.outputs.url }} | sha256sum | cut -d ' ' -f 1 > sha.txt
+          echo "sha256=$(cat sha.txt)" >> $GITHUB_OUTPUT
+
+      - name: Update formula
+        run: |
+          cat > tap/Formula/crules.rb << EOF
+          class Crules < Formula
+            include Language::Python::Virtualenv
+
+            desc "Project rules management CLI tool"
+            homepage "https://github.com/tirano-tirano/crules"
+            url "${{ steps.release.outputs.url }}"
+            sha256 "${{ steps.sha.outputs.sha256 }}"
+            license "MIT"
+
+            depends_on "python@3.10"
+
+            def install
+              virtualenv_install_with_resources
+            end
+
+            test do
+              system bin/"crules", "--version"
+            end
+          end
+          EOF
+
+      - name: Commit and push
+        run: |
+          cd tap
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add Formula/crules.rb
+          git commit -m "crules ${{ steps.release.outputs.version }}"
+          git push
