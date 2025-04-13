@@ -42,12 +42,12 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install -e . --verbose
-          pip install black isort flake8 pytest pytest-cov
+          pip install black==23.12.1 isort flake8 pytest pytest-cov
 
       - name: Check code formatting with black
         run: |
           cd crules
-          black . --check
+          python -m black --check --verbose crules
 
       - name: Check import sorting with isort
         run: |
