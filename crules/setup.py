@@ -2,7 +2,10 @@ from setuptools import setup, find_packages
 import os
 
 # READMEファイルのパスを取得
-with open(os.path.join(os.path.dirname(os.path.dirname(__file__)), "README.md"), encoding="utf-8") as f:
+with open(
+    os.path.join(os.path.dirname(os.path.dirname(__file__)), "README.md"),
+    encoding="utf-8",
+) as f:
     long_description = f.read()
 
 setup(
@@ -32,4 +35,4 @@ setup(
         "Operating System :: OS Independent",
     ],
     python_requires=">=3.6",
-) 
+)
