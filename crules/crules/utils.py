@@ -430,9 +430,7 @@ def resolve_conflict(source: str, target: str, force: bool = False) -> bool:
                 return True
 
             # ユーザーに上書き確認
-            if not click.confirm(
-                f"ファイル {target} は既に存在します。上書きしますか？", default=False
-            ):
+            if not click.confirm(f"ファイル {target} は既に存在します。上書きしますか？", default=False):
                 log_info("ユーザーによってキャンセルされました")
                 return False
 
@@ -707,9 +705,7 @@ def copy_files(source_dir: str, target_dir: str, force: bool = False) -> bool:
         target_path = Path(target_dir)
 
         if not source_path.exists():
-            raise FileOperationError(
-                f"コピー元のディレクトリが存在しません: {source_dir}"
-            )
+            raise FileOperationError(f"コピー元のディレクトリが存在しません: {source_dir}")
 
         target_path.mkdir(parents=True, exist_ok=True)
 
@@ -881,16 +877,12 @@ def process_mdc_file(file_path: str) -> Tuple[bool, Dict[str, Any]]:
             front_matter, required_fields
         )
         if not is_valid:
-            raise MarkdownError(
-                f"必須フィールドが不足しています: {', '.join(missing_fields)}"
-            )
+            raise MarkdownError(f"必須フィールドが不足しています: {', '.join(missing_fields)}")
 
         # ファイルサイズの検証
         file_size = get_file_size(file_path)
         if file_size > 10000:  # 10KB以上のファイルは警告
-            click.echo(
-                f"警告: ファイルサイズが大きすぎます: {file_path} ({file_size} bytes)"
-            )
+            click.echo(f"警告: ファイルサイズが大きすぎます: {file_path} ({file_size} bytes)")
 
         return True, {
             "front_matter": front_matter,
@@ -922,16 +914,12 @@ def process_md_file(file_path: str) -> Tuple[bool, Dict[str, Any]]:
             front_matter, required_fields
         )
         if not is_valid:
-            raise MarkdownError(
-                f"必須フィールドが不足しています: {', '.join(missing_fields)}"
-            )
+            raise MarkdownError(f"必須フィールドが不足しています: {', '.join(missing_fields)}")
 
         # ファイルサイズの検証
         file_size = get_file_size(file_path)
         if file_size > 10000:  # 10KB以上のファイルは警告
-            click.echo(
-                f"警告: ファイルサイズが大きすぎます: {file_path} ({file_size} bytes)"
-            )
+            click.echo(f"警告: ファイルサイズが大きすぎます: {file_path} ({file_size} bytes)")
 
         return True, {
             "front_matter": front_matter,
@@ -1124,9 +1112,7 @@ def validate_template_directory(template_dir: str) -> bool:
     try:
         path = Path(template_dir)
         if not path.exists():
-            raise TemplateError(
-                f"テンプレートディレクトリが存在しません: {template_dir}"
-            )
+            raise TemplateError(f"テンプレートディレクトリが存在しません: {template_dir}")
 
         # 必須ディレクトリの確認
         rules_dir = path / "rules"
@@ -1158,9 +1144,7 @@ def check_template_files(template_dir: str) -> Tuple[bool, List[str]]:
     try:
         path = Path(template_dir)
         if not path.exists():
-            raise TemplateError(
-                f"テンプレートディレクトリが存在しません: {template_dir}"
-            )
+            raise TemplateError(f"テンプレートディレクトリが存在しません: {template_dir}")
 
         missing_files = []
 
@@ -1200,9 +1184,7 @@ def load_template_directory(template_dir: str) -> Dict[str, List[str]]:
     try:
         path = Path(template_dir)
         if not path.exists():
-            raise TemplateError(
-                f"テンプレートディレクトリが存在しません: {template_dir}"
-            )
+            raise TemplateError(f"テンプレートディレクトリが存在しません: {template_dir}")
 
         result = {"rules": [], "notes": []}
 
@@ -1617,7 +1599,7 @@ def get_directory_hierarchy_string(path: str) -> str:
     result.append(f"📁 {base_name}")
 
     for root, dirs, files in os.walk(path):
-        level = root[len(path):].count(os.sep)
+        level = root[len(path) :].count(os.sep)
         indent = "  " * (level + 1)
         rel_path = os.path.relpath(root, path)
 

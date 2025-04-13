@@ -124,7 +124,9 @@ def deploy_command(template_dir: str, target_dir: str) -> bool:
             for file in os.listdir(template_rules_path):
                 if file.endswith(".md"):
                     source = os.path.join(template_rules_path, file)
-                    target = os.path.join(target_rules_path, file.replace(".md", ".mdc"))
+                    target = os.path.join(
+                        target_rules_path, file.replace(".md", ".mdc")
+                    )
                     utils.copy_file(source, target)
 
         # ノートファイルをコピー
@@ -208,7 +210,7 @@ def tree_command(template_dir: Optional[str] = None) -> str:
     # テンプレートディレクトリのパスを取得
     if not template_dir:
         template_dir = "template"
-    
+
     if not os.path.exists(template_dir):
         utils.log_error(f"テンプレートディレクトリが見つかりません: {template_dir}")
         return ""
