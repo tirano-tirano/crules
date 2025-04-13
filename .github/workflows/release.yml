@@ -4,6 +4,11 @@ on:
   release:
     types: [published]
 
+# Add permissions configuration
+permissions:
+  contents: write
+  packages: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
