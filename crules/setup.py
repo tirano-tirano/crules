@@ -1,4 +1,9 @@
 from setuptools import setup, find_packages
+import os
+
+# READMEファイルのパスを取得
+with open(os.path.join(os.path.dirname(os.path.dirname(__file__)), "README.md"), encoding="utf-8") as f:
+    long_description = f.read()
 
 setup(
     name="crules",
@@ -16,11 +21,11 @@ setup(
         ],
     },
     author="John Smith",
-    author_email="john.smith@example.com",
+    author_email="tirano.tirano@gmail.com",
     description="プロジェクトルール管理CLIツール",
-    long_description=open("README.md").read(),
+    long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/johnsmith/crules",
+    url="https://github.com/tirano-tirano/crules",
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",

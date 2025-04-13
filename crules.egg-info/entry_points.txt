@@ -1,0 +1,2 @@
+[console_scripts]
+crules = crules.cli:cli
