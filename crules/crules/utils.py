@@ -145,60 +145,47 @@ def write_file(path: str, content: str) -> bool:
         return False
 
 
-def read_yaml_front_matter(file_path_or_content: str) -> dict:
-    """
-    YAMLフロントマターを読み込みます。
+def read_yaml_front_matter(file_path_or_content: str) -> Optional[Dict[str, Any]]:
+    """YAMLフロントマターを読み込む
 
     Args:
-        file_path_or_content (str): ファイルパスまたはファイルの内容
+        file_path_or_content (str): ファイルパスまたはコンテンツ文字列
 
     Returns:
-        dict: YAMLフロントマターの内容
+        Optional[Dict[str, Any]]: YAMLフロントマターの内容。無効な場合はNone
 
     Raises:
-        ValidationError: YAMLフロントマターの形式が不正な場合
+        ValidationError: YAMLフロントマターが無効な場合
     """
     try:
-        # ファイルが存在する場合は読み込み
+        # ファイルパスの場合はファイルを読み込む
         if os.path.exists(file_path_or_content):
             with open(file_path_or_content, "r", encoding="utf-8") as f:
                 content = f.read()
         else:
             content = file_path_or_content
 
-        if not content:
-            raise ValidationError("ファイルが空です")
-
-        content = content.replace("\r\n", "\n")
-        lines = content.split("\n")
-
-        if not lines[0].startswith("---"):
+        # YAMLフロントマターを抽出
+        pattern = r"^---\s*\n(.*?)\n---\s*\n"
+        match = re.search(pattern, content, re.DOTALL)
+        if not match:
             raise ValidationError("YAMLフロントマターが見つかりません")
 
-        end_marker = -1
-        for i, line in enumerate(lines[1:], 1):
-            if line.startswith("---"):
-                end_marker = i
-                break
-
-        if end_marker == -1:
-            raise ValidationError("YAMLフロントマターの終了マーカーが見つかりません")
-
-        # YAMLフロントマターの内容を抽出
-        yaml_content = "\n".join(lines[1:end_marker])
-
+        # YAMLをパース
         try:
-            # YAMLを解析
-            front_matter = yaml.safe_load(yaml_content)
-            if not isinstance(front_matter, dict):
-                raise ValidationError("YAMLフロントマターが辞書形式ではありません")
-            return front_matter
+            front_matter = yaml.safe_load(match.group(1))
         except yaml.YAMLError as e:
-            raise ValidationError(f"YAMLフロントマターの解析に失敗しました: {e}")
-    except ValidationError as e:
-        raise e
+            raise ValidationError(f"YAMLフロントマターのパースに失敗しました: {str(e)}")
+
+        if not isinstance(front_matter, dict):
+            raise ValidationError("YAMLフロントマターは辞書形式である必要があります")
+
+        return front_matter
+
+    except OSError as e:
+        raise ValidationError(f"ファイルの読み込みに失敗しました: {str(e)}")
     except Exception as e:
-        raise ValidationError(f"YAMLフロントマターの読み込みに失敗しました: {e}")
+        raise ValidationError(f"YAMLフロントマターの読み込みに失敗しました: {str(e)}")
 
 
 def get_yaml_front_matter(path: str) -> Dict[str, Any]:
@@ -1614,3 +1601,30 @@ def display_error(message: str) -> None:
         message: エラーメッセージ
     """
     click.echo(f"エラー: {message}")
+
+
+def get_directory_hierarchy_string(path: str) -> str:
+    """ディレクトリ階層を文字列として取得
+
+    Args:
+        path: ディレクトリパス
+
+    Returns:
+        str: ディレクトリ階層を表す文字列
+    """
+    result = []
+    base_name = os.path.basename(path)
+    result.append(f"📁 {base_name}")
+
+    for root, dirs, files in os.walk(path):
+        level = root[len(path):].count(os.sep)
+        indent = "  " * (level + 1)
+        rel_path = os.path.relpath(root, path)
+
+        if rel_path != ".":
+            result.append(f"{indent}📁 {os.path.basename(root)}")
+
+        for file in files:
+            result.append(f"{indent}  📄 {file}")
+
+    return "\n".join(result)
