@@ -98,8 +98,45 @@ venv.bak/
 # mypy
 .mypy_cache/
 
-# IDE settings
+# Editor directories and files
 .idea/
 .vscode/
 *.swp
-*.swo 
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Project specific
+.cursor/
+.notes/
+template/
+target/
+*.mdc
+*.md
+!README.md
+!LICENSE.md
+!CHANGELOG.md
+!CONTRIBUTING.md
+
+# Credentials and secrets
+*.pem
+*.key
+*.cert
+*.crt
+*.p12
+*.pfx
+*.keystore
+*.jks
+*.env
+*.env.*
+config.json
+credentials.json
+secrets.json 
