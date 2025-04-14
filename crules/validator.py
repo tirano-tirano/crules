@@ -1,5 +1,6 @@
 import re
 
+
 def validate_rule(rule: dict) -> bool:
     """
     ルールの検証を行う
@@ -25,4 +26,4 @@ def validate_rule(rule: dict) -> bool:
     except re.error:
         raise ValueError("無効な正規表現パターンです")
 
-    return True 
+    return True
