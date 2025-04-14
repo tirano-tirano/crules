@@ -24,7 +24,7 @@ def cli():
 @click.option("--force", "-f", is_flag=True, help="既存のファイルを上書きします")
 def init(template_dir: Optional[str], force: bool):
     """テンプレートからプロジェクトルールとノートを配置します"""
-    commands.init_command(template_dir, force)
+    commands.init_command(template_dir or ".")
 
 
 @cli.command()
