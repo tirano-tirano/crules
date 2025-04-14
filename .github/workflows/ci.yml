@@ -22,7 +22,7 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('crules/requirements.txt') }}
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
           restore-keys: |
             ${{ runner.os }}-pip-
 
@@ -30,11 +30,9 @@ jobs:
         run: |
           pwd
           ls -la
-          ls -la crules
 
       - name: Install dependencies
         run: |
-          cd crules
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install -e . --verbose
@@ -42,35 +40,30 @@ jobs:
 
       - name: Check code formatting with black
         run: |
-          cd crules
           python -m black --check --verbose crules
 
       - name: Check import sorting with isort
         run: |
-          cd crules
           isort . --check-only
 
       - name: Lint with flake8
         run: |
-          cd crules
           flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
 
       - name: Debug test directory
         run: |
-          cd crules
           ls -la tests
           ls -la tests/unit
 
       - name: Test with pytest and generate coverage report
         run: |
-          cd crules
           python -m pytest tests/unit -v --cov=crules --cov-report=xml
 
       - name: Upload coverage report
         uses: codecov/codecov-action@v3
         continue-on-error: true
         with:
-          file: ./crules/coverage.xml
+          file: ./coverage.xml
           fail_ci_if_error: false
 
   build:
@@ -86,17 +79,15 @@ jobs:
 
       - name: Install build dependencies
         run: |
-          cd crules
           python -m pip install --upgrade pip
           pip install build
 
       - name: Build package
         run: |
-          cd crules
           python -m build
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: dist
-          path: crules/dist/
+          path: dist/
