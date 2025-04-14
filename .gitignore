@@ -48,4 +48,20 @@ ehthumbs.db
 Thumbs.db
 
 # Project specific
-.notes/ 
+.notes/
+
+# Logs
+*.log
+logs/
+log/
+
+# Local settings
+local_settings.py
+settings_local.py
+.env.local
+.env.*.local
+
+# Database
+*.db
+*.sqlite3
+*.sqlite 
