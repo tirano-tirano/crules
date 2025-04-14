@@ -9,17 +9,13 @@ on:
 jobs:
   test:
     runs-on: macos-latest
-    strategy:
-      matrix:
-        python-version: [3.9, "3.10", "3.11"]
-
     steps:
       - uses: actions/checkout@v3
 
-      - name: Set up Python ${{ matrix.python-version }}
+      - name: Set up Python 3.11
         uses: actions/setup-python@v4
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: "3.11"
           cache: "pip"
 
       - name: Cache pip packages
@@ -79,16 +75,13 @@ jobs:
   build:
     runs-on: macos-latest
     needs: test
-    strategy:
-      matrix:
-        python-version: [3.9, "3.10", "3.11"]
     steps:
       - uses: actions/checkout@v3
 
-      - name: Set up Python ${{ matrix.python-version }}
+      - name: Set up Python 3.11
         uses: actions/setup-python@v4
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: "3.11"
 
       - name: Install build dependencies
         run: |
@@ -104,5 +97,5 @@ jobs:
       - name: Upload build artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: dist-${{ matrix.python-version }}
+          name: dist
           path: crules/dist/
