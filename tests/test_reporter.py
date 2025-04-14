@@ -1,5 +1,7 @@
 import pytest
+
 from crules.reporter import create_validation_report
+
 
 def test_create_validation_report_success():
     """検証成功時のレポート生成テスト"""

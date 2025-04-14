@@ -1,5 +1,7 @@
 import pytest
+
 from crules.validator import validate_rule
+
 
 def test_validate_rule_basic():
     """基本的なルール検証のテスト"""
