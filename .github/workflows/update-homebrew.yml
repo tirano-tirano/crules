@@ -13,7 +13,6 @@ jobs:
         with:
           repository: tirano-tirano/homebrew-crules
           token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
-          path: homebrew-crules
 
       - name: Get release info
         id: release
@@ -27,21 +26,13 @@ jobs:
 
       - name: Update formula
         run: |
-          cd homebrew-crules
           sed -i "s|url.*|url \"${{ steps.release.outputs.tarball_url }}\"|" Formula/crules.rb
           sed -i "s|sha256.*|sha256 \"${{ steps.release.outputs.sha256 }}\"|" Formula/crules.rb
 
-      - name: Create Pull Request
-        uses: peter-evans/create-pull-request@v5
-        with:
-          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
-          path: homebrew-crules
-          commit-message: "feat: update crules to version ${{ steps.release.outputs.version }}"
-          title: "Update crules to version ${{ steps.release.outputs.version }}"
-          body: |
-            Updates the Homebrew formula to version ${{ steps.release.outputs.version }}.
-
-            - Updates URL to new release tarball
-            - Updates SHA256 hash
-          branch: update-formula
-          base: main
+      - name: Commit and push changes
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git add Formula/crules.rb
+          git commit -m "feat: update crules to version ${{ steps.release.outputs.version }}"
+          git push
