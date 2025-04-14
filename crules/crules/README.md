@@ -28,11 +28,32 @@ brew install tirano-tirano/crules/crules
 
 ### アップデート
 
-最新バージョンにアップデート:
+crules を最新バージョンにアップデートするには、以下のいずれかの方法を使用します：
+
+1. crules のみをアップデート:
 
 ```bash
 brew upgrade crules
 ```
+
+2. すべてのパッケージをアップデート（推奨）:
+
+```bash
+brew update
+brew upgrade
+```
+
+3. 特定のバージョンにアップデート:
+
+```bash
+brew upgrade crules@<version>
+```
+
+注意:
+
+- アップデート前に`brew update`を実行することを推奨します
+- アップデート後は`crules --version`で新しいバージョンが正しくインストールされたことを確認できます
+- 問題が発生した場合は、アンインストールして再インストールすることもできます
 
 ### アンインストール
 
