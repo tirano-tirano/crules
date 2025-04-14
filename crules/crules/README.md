@@ -4,6 +4,83 @@
 
 Crules は、プロジェクトルール管理のための Python パッケージです。このパッケージは、プロジェクトごとのルールとノートを効率的に管理・配置するための機能を提供します。
 
+## インストール
+
+### Homebrew を使用する場合（推奨）
+
+1. tap の追加:
+
+```bash
+brew tap tirano-tirano/crules
+```
+
+2. crules のインストール:
+
+```bash
+brew install crules
+```
+
+または、1 つのコマンドで実行:
+
+```bash
+brew install tirano-tirano/crules/crules
+```
+
+### アップデート
+
+最新バージョンにアップデート:
+
+```bash
+brew upgrade crules
+```
+
+### アンインストール
+
+crules のアンインストール:
+
+```bash
+brew uninstall crules
+```
+
+tap の削除:
+
+```bash
+brew untap tirano-tirano/crules
+```
+
+注意: tap の削除は自動的にパッケージをアンインストールしません。完全に削除する場合は、両方のコマンドを実行してください。
+
+### 前提条件
+
+- macOS
+- Homebrew がインストール済み
+- Intel または Apple Silicon Mac（両アーキテクチャをサポート）
+
+### トラブルシューティング
+
+インストールで問題が発生した場合:
+
+1. Homebrew の更新:
+
+```bash
+brew update
+```
+
+2. 競合の確認:
+
+```bash
+brew doctor
+```
+
+3. 問題が解決しない場合は、再インストールを試してください:
+
+```bash
+brew uninstall crules
+brew untap tirano-tirano/crules
+brew tap tirano-tirano/crules
+brew install crules
+```
+
 ## プロジェクト構造
 
 ```
