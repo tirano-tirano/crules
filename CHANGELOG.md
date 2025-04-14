@@ -1,3 +1,9 @@
+## [](https://github.com/tirano-tirano/Crules/compare/v0.3.0...v) (2025-04-14)
+
+### Bug Fixes
+
+* update GitHub Actions workflow and add changelog ([f5f31c8](https://github.com/tirano-tirano/Crules/commit/f5f31c8f1a6aa7c3282b7d709a85e8a6a767e3f6))
+* update GitHub Actions workflow to use Node.js for conventional-changelog ([b8a3201](https://github.com/tirano-tirano/Crules/commit/b8a3201bab830d5bdeb26de5041cbb8d1eba979e))
 # Changelog
 
 All notable changes to this project will be documented in this file.
