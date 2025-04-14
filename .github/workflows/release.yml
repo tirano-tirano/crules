@@ -35,3 +35,30 @@ jobs:
             crules/dist/*.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  update-homebrew:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Update Homebrew tap
+        env:
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: |
+          # タップリポジトリをクローン
+          git clone https://github.com/tirano-tirano/homebrew-crules.git
+          cd homebrew-crules
+
+          # フォーミュラの更新
+          VERSION=${{ github.event.release.tag_name }}
+          SHA256=$(curl -sL https://github.com/tirano-tirano/crules/archive/refs/tags/${VERSION}.tar.gz | shasum -a 256 | cut -d' ' -f1)
+
+          # フォーミュラファイルを更新
+          sed -i '' "s/version \".*\"/version \"${VERSION#v}\"/" Formula/crules.rb
+          sed -i '' "s/sha256 \".*\"/sha256 \"${SHA256}\"/" Formula/crules.rb
+
+          # 変更をコミットしてプッシュ
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git add Formula/crules.rb
+          git commit -m "Update crules to version ${VERSION}"
+          git push "https://${HOMEBREW_TAP_TOKEN}@github.com/tirano-tirano/homebrew-crules.git" HEAD:main
