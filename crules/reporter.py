@@ -12,4 +12,4 @@ def create_validation_report(rule: dict, result: bool) -> str:
     if result:
         return f"✅ {rule['name']}\n検証成功"
     else:
-        return f"❌ {rule['name']}\n検証失敗\n{rule['message']}" 
+        return f"❌ {rule['name']}\n検証失敗\n{rule['message']}"
