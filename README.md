@@ -11,6 +11,7 @@ crules は、プロジェクトごとに異なるルールとノートを効率�
 ### Homebrew を使用したインストール
 
 ```bash
+brew tap tirano-tirano/crules
 brew install crules
 ```
 
