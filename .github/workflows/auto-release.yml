@@ -36,7 +36,7 @@ jobs:
       - name: Determine version bump
         id: bump_version
         run: |
-          COMMITS=$(git log --format=%B ${{ steps.get_version.outputs.current_version }}..HEAD)
+          COMMITS=$(git log --format=%B v${{ steps.get_version.outputs.current_version }}..HEAD)
           if echo "$COMMITS" | grep -q "BREAKING CHANGE"; then
             echo "bump=major" >> $GITHUB_OUTPUT
           elif echo "$COMMITS" | grep -q "^feat:"; then
@@ -97,7 +97,7 @@ jobs:
             ${{ steps.bump_version.outputs.bump }} version bump
 
             ### Commits
-            $(git log --format="- %s" ${{ steps.get_version.outputs.current_version }}..HEAD)
+            $(git log --format="- %s" v${{ steps.get_version.outputs.current_version }}..HEAD)
           draft: false
           prerelease: false
         env:
