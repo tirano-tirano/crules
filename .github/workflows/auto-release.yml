@@ -102,3 +102,26 @@ jobs:
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update Homebrew Formula
+        if: steps.bump_version.outputs.bump != 'none'
+        run: |
+          # Clone homebrew-crules repository
+          git clone https://x-access-token:${{ secrets.HOMEBREW_TAP_TOKEN }}@github.com/tirano-tirano/homebrew-crules.git
+          cd homebrew-crules
+
+          # Calculate SHA256 for the new version
+          NEW_VERSION=${{ steps.new_version.outputs.new_version }}
+          TARBALL_URL="https://github.com/tirano-tirano/crules/archive/refs/tags/v${NEW_VERSION}.tar.gz"
+          SHA256=$(curl -L $TARBALL_URL | sha256sum | cut -d' ' -f1)
+
+          # Update formula
+          sed -i "s|url.*|url \"$TARBALL_URL\"|" Formula/crules.rb
+          sed -i "s|sha256.*|sha256 \"$SHA256\"|" Formula/crules.rb
+
+          # Commit and push changes
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git add Formula/crules.rb
+          git commit -m "feat: update crules to version ${NEW_VERSION}"
+          git push
