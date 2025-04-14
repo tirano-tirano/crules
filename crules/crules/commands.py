@@ -2,10 +2,12 @@
 crules - コマンド実装
 """
 
-import os
 import json
+import os
+from typing import Any, Dict, List, Optional, Tuple
+
 import click
-from typing import Optional, List, Dict, Any, Tuple
+
 from . import utils
 
 

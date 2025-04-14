@@ -2,8 +2,10 @@
 crules - コマンドラインインターフェース
 """
 
-import click
 from typing import Optional
+
+import click
+
 from . import commands
 
 

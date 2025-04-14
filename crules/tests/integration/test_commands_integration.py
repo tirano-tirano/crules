@@ -1,10 +1,12 @@
 import os
-import pytest
 import shutil
 from pathlib import Path
+
+import pytest
+
 from crules.commands import (
-    init_command,
     deploy_command,
+    init_command,
     list_command,
     tree_command,
     validate_command,

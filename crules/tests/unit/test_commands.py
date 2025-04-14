@@ -1,9 +1,11 @@
 import os
-import pytest
 from pathlib import Path
+
+import pytest
+
 from crules.commands import (
-    init_command,
     deploy_command,
+    init_command,
     list_command,
     tree_command,
     validate_command,
