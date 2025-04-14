@@ -52,12 +52,12 @@ jobs:
 
       - name: Debug test directory
         run: |
-          ls -la tests
-          ls -la tests/unit
+          ls -la crules/tests
+          ls -la crules/tests/unit
 
       - name: Test with pytest and generate coverage report
         run: |
-          python -m pytest tests/unit -v --cov=crules --cov-report=xml
+          python -m pytest crules/tests/unit -v --cov=crules --cov-report=xml
 
       - name: Upload coverage report
         uses: codecov/codecov-action@v3
