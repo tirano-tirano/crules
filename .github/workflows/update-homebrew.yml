@@ -1,0 +1,47 @@
+name: Update Homebrew Formula
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  update-formula:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout homebrew-crules
+        uses: actions/checkout@v3
+        with:
+          repository: tirano-tirano/homebrew-crules
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          path: homebrew-crules
+
+      - name: Get release info
+        id: release
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          TARBALL_URL="https://github.com/tirano-tirano/crules/archive/refs/tags/v${VERSION}.tar.gz"
+          echo "tarball_url=$TARBALL_URL" >> $GITHUB_OUTPUT
+          SHA256=$(curl -L $TARBALL_URL | sha256sum | cut -d' ' -f1)
+          echo "sha256=$SHA256" >> $GITHUB_OUTPUT
+
+      - name: Update formula
+        run: |
+          cd homebrew-crules
+          sed -i "s|url.*|url \"${{ steps.release.outputs.tarball_url }}\"|" Formula/crules.rb
+          sed -i "s|sha256.*|sha256 \"${{ steps.release.outputs.sha256 }}\"|" Formula/crules.rb
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          path: homebrew-crules
+          commit-message: "feat: update crules to version ${{ steps.release.outputs.version }}"
+          title: "Update crules to version ${{ steps.release.outputs.version }}"
+          body: |
+            Updates the Homebrew formula to version ${{ steps.release.outputs.version }}.
+
+            - Updates URL to new release tarball
+            - Updates SHA256 hash
+          branch: update-formula
+          base: main
