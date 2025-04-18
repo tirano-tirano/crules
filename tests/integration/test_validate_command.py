@@ -23,10 +23,15 @@ def create_test_file(path: Path, content: str = "") -> None:
 
 def create_test_structure(tmp_path: Path, rule_content: str = "", note_content: str = "") -> None:
     """テスト用のディレクトリ構造を作成するヘルパー関数"""
+    rules_dir = tmp_path / "rules"
+    notes_dir = tmp_path / "notes"
+    
     if rule_content:
-        create_test_file(tmp_path / "rules" / "test_rule.mdc", rule_content)
+        rules_dir.mkdir(parents=True, exist_ok=True)
+        (rules_dir / "test_rule.mdc").write_text(rule_content)
     if note_content:
-        create_test_file(tmp_path / "notes" / "test_note.md", note_content)
+        notes_dir.mkdir(parents=True, exist_ok=True)
+        (notes_dir / "test_note.md").write_text(note_content)
 
 
 @pytest.fixture(scope="function")
@@ -60,24 +65,40 @@ def test_validate_command_success(temp_dir):
     """正常なルールとノートファイルが存在する場合のテスト"""
     create_test_structure(
         temp_dir,
-        rule_content="---\ntitle: Test Rule\n---\nTest content",
-        note_content="---\ntitle: Test Note\n---\nTest content"
+        rule_content='''---
+description: Test rule description
+globs: ["**/*.py"]
+alwaysApply: true
+---
+Test content''',
+        note_content='''---
+title: Test Note
+---
+Test content'''
     )
     result = validate_command(temp_dir)
-    assert result == 0
+    assert result is True
 
 
 def test_validate_command_empty_directories(temp_dir):
     """空のディレクトリ構造の場合のテスト"""
     result = validate_command(temp_dir)
-    assert result == 1
+    assert result is False
 
 
 def test_validate_command_with_rules_only(temp_dir):
     """ルールディレクトリのみが存在する場合のテスト"""
-    create_test_structure(temp_dir, rule_content="---\ntitle: Test Rule\n---\nTest content")
+    create_test_structure(
+        temp_dir,
+        rule_content='''---
+description: Test rule description
+globs: ["**/*.py"]
+alwaysApply: true
+---
+Test content'''
+    )
     result = validate_command(temp_dir)
-    assert result == 1
+    assert result is False
 
 
 def test_validate_command_with_invalid_rule(temp_dir):
@@ -85,21 +106,40 @@ def test_validate_command_with_invalid_rule(temp_dir):
     create_test_structure(
         temp_dir,
         rule_content="Invalid content without YAML front matter",
-        note_content="---\ntitle: Test Note\n---\nTest content"
+        note_content='''---
+title: Test Note
+---
+Test content'''
     )
     result = validate_command(temp_dir)
-    assert result == 1
+    assert result is False
 
 
 def test_validate_command_with_empty_rule(temp_dir):
     """空のルールファイルが存在する場合のテスト"""
-    create_test_structure(temp_dir, rule_content="", note_content="---\ntitle: Test Note\n---\nTest content")
+    create_test_structure(
+        temp_dir,
+        rule_content="",
+        note_content='''---
+title: Test Note
+---
+Test content'''
+    )
     result = validate_command(temp_dir)
-    assert result == 1
+    assert result is False
 
 
 def test_validate_command_with_empty_note(temp_dir):
     """空のノートファイルが存在する場合のテスト"""
-    create_test_structure(temp_dir, rule_content="---\ntitle: Test Rule\n---\nTest content", note_content="")
+    create_test_structure(
+        temp_dir,
+        rule_content='''---
+description: Test rule description
+globs: ["**/*.py"]
+alwaysApply: true
+---
+Test content''',
+        note_content=""
+    )
     result = validate_command(temp_dir)
-    assert result == 1
+    assert result is False

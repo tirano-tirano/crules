@@ -5,16 +5,14 @@ on:
     branches: [main]
   push:
     branches: [main]
-  release:
-    types: [published]
 
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v2
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v2
         with:
           python-version: "3.9"
       - name: Install dependencies
@@ -26,14 +24,14 @@ jobs:
         run: |
           pytest --cov=crules --cov-report=xml
       - name: Upload coverage
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v2
 
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v2
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v2
         with:
           python-version: "3.9"
       - name: Install dependencies
@@ -51,9 +49,9 @@ jobs:
   security:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v2
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v2
         with:
           python-version: "3.9"
       - name: Install dependencies
@@ -67,28 +65,28 @@ jobs:
 
   deploy:
     needs: [test, lint, security]
-    if: github.event_name == 'release'
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v2
         with:
           fetch-depth: 0
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v2
         with:
           python-version: "3.9"
       - name: Get previous version
         id: get_previous_version
         run: |
           PREVIOUS_VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo "0.0.0")
-          echo "previous_version=$PREVIOUS_VERSION" >> $GITHUB_OUTPUT
+          echo "::set-output name=previous_version::$PREVIOUS_VERSION"
           echo "PREVIOUS_VERSION=$PREVIOUS_VERSION" >> $GITHUB_ENV
       - name: Update version
         id: update_version
         run: |
           # バージョン番号の更新ロジック
           NEW_VERSION=$(echo "0.1.${{ github.run_number }}" | sed 's/^0*//')
-          echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "::set-output name=version::$NEW_VERSION"
           # バージョン番号をファイルに書き込む
           echo "VERSION=$NEW_VERSION" >> $GITHUB_ENV
 
@@ -117,10 +115,12 @@ jobs:
           find . -type f -not -path "*/\.*" -not -path "*/venv/*" | sort | xargs shasum -a 256 > hashes.txt
       - name: Create GitHub Release
         id: create_release
-        uses: softprops/action-gh-release@v1
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: v${{ env.VERSION }}
-          name: Release v${{ env.VERSION }}
+          release_name: Release v${{ env.VERSION }}
           body: |
             ## 変更内容
 
@@ -133,7 +133,15 @@ jobs:
             ```
           draft: false
           prerelease: false
-          files: hashes.txt
+      - name: Upload Release Assets
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./hashes.txt
+          asset_name: hashes.txt
+          asset_content_type: text/plain
       - name: Update Homebrew Formula
         if: github.event_name == 'release'
         run: |

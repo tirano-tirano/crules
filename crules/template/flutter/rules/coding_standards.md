@@ -1,6 +1,7 @@
 ---
-title: Flutterコーディング規約
-description: Flutterプロジェクトのコーディング規約
+description: プロジェクトのコーディング規約
+globs: 
+alwaysApply: false
 ---
 
 # Flutterコーディング規約

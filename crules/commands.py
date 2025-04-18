@@ -259,7 +259,7 @@ def validate_rule_file(file_path: Path) -> None:
         front_matter = yaml.safe_load(yaml_content)
 
         # 必須フィールドの確認
-        required_fields = ["title", "description", "tags"]
+        required_fields = ["description", "globs", "alwaysApply"]
         for field in required_fields:
             if field not in front_matter:
                 raise ValidationError(f"{file_path}: 必須フィールド '{field}' がありません")
@@ -281,8 +281,8 @@ def validate_note_file(file_path: Path) -> bool:
     """
     try:
         content = file_path.read_text()
-        if not content.startswith("---"):
-            logger.error(f"{file_path}: YAMLフロントマターがありません")
+        if not content.strip():
+            logger.error(f"{file_path}: ファイルが空です")
             return False
         return True
     except Exception as e:
@@ -290,7 +290,7 @@ def validate_note_file(file_path: Path) -> bool:
         return False
 
 
-def validate_command(path: str) -> int:
+def validate_command(path: str) -> bool:
     """
     指定されたパスのルールとノートを検証します。
 
@@ -298,10 +298,7 @@ def validate_command(path: str) -> int:
         path: 検証するプロジェクトのパス
 
     Returns:
-        int:
-            0: エラーなし
-            1: エラーあり（ルールファイルのエラー、空のファイル、notesディレクトリが存在しない場合など）
-            2: 警告あり（その他の警告）
+        bool: 検証が成功した場合はTrue、失敗した場合はFalse
     """
     from pathlib import Path
     import logging
@@ -310,18 +307,17 @@ def validate_command(path: str) -> int:
     rules_dir = project_path / "rules"
     notes_dir = project_path / "notes"
     has_errors = False
-    has_warnings = False
 
     # rulesディレクトリの検証
     if not rules_dir.exists():
         logging.error("rulesディレクトリが存在しません")
-        return 1
+        return False
 
     # ルールファイルの検証
     rule_files = list(rules_dir.glob("*.md")) + list(rules_dir.glob("*.mdc"))
     if not rule_files:
         logging.error("ルールファイルが存在しません")
-        return 1
+        return False
 
     for rule_file in rule_files:
         try:
@@ -335,6 +331,17 @@ def validate_command(path: str) -> int:
             if "---" not in content:
                 logging.error(f"{rule_file.name}: YAMLフロントマターがありません")
                 has_errors = True
+            else:
+                # YAMLフロントマターを抽出して検証
+                _, yaml_content, _ = content.split("---", 2)
+                front_matter = yaml.safe_load(yaml_content)
+                
+                # 必須フィールドの確認
+                required_fields = ["description", "globs", "alwaysApply"]
+                for field in required_fields:
+                    if field not in front_matter:
+                        logging.error(f"{rule_file.name}: 必須フィールド '{field}' がありません")
+                        has_errors = True
 
         except Exception as e:
             logging.error(f"{rule_file.name}: ファイルの読み込みに失敗しました - {str(e)}")
@@ -361,11 +368,7 @@ def validate_command(path: str) -> int:
                     logging.error(f"{note_file.name}: ファイルの読み込みに失敗しました - {str(e)}")
                     has_errors = True
 
-    if has_errors:
-        return 1
-    elif has_warnings:
-        return 2
-    return 0
+    return not has_errors
 
 
 def get_default_template_dir() -> Path:
@@ -378,13 +381,13 @@ def get_default_template_dir() -> Path:
     return Path.home() / ".cursor" / "templates"
 
 
-def validate_file_content(file_path: Path, required_fields: List[str]) -> List[str]:
+def validate_file_content(file_path: Path, required_fields: List[str] = None) -> List[str]:
     """
     ファイルの内容を検証します。
 
     Args:
         file_path: 検証するファイルのパス
-        required_fields: 必須フィールドのリスト
+        required_fields: 必須フィールドのリスト（Noneの場合はデフォルト値を使用）
 
     Returns:
         List[str]: エラーメッセージのリスト
@@ -400,28 +403,33 @@ def validate_file_content(file_path: Path, required_fields: List[str]) -> List[s
         with open(file_path, "r", encoding="utf-8") as f:
             content = f.read()
 
-        front_matter = utils.read_yaml_front_matter(content)
-        if not front_matter:
-            errors.append("YAML front matterが見つかりません")
-            return errors
+        # ルールファイルの場合のみYAMLフロントマターを検証
+        if file_path.suffix == ".mdc":
+            front_matter = utils.read_yaml_front_matter(content)
+            if not front_matter:
+                errors.append("YAML front matterが見つかりません")
+                return errors
 
-        # 必須フィールドの検証
-        missing_fields = [
-            field for field in required_fields if field not in front_matter
-        ]
-        if missing_fields:
-            errors.append(f"必須フィールドが欠けています: {', '.join(missing_fields)}")
+            # 必須フィールドの検証（デフォルト値を使用）
+            if required_fields is None:
+                required_fields = ["description", "globs", "alwaysApply"]
+            
+            missing_fields = [
+                field for field in required_fields if field not in front_matter
+            ]
+            if missing_fields:
+                errors.append(f"必須フィールドが欠けています: {', '.join(missing_fields)}")
 
-        # 説明文の長さチェック
-        if "description" in front_matter and len(front_matter["description"]) > 100:
-            errors.append("説明文が長すぎます（100文字以内にしてください）")
+            # 説明文の長さチェック
+            if "description" in front_matter and len(front_matter["description"]) > 100:
+                errors.append("説明文が長すぎます（100文字以内にしてください）")
 
-        # globsフィールドの検証（ルールファイルの場合）
-        if "globs" in front_matter:
-            if not isinstance(front_matter["globs"], list):
-                errors.append("globsフィールドは配列である必要があります")
-            elif not front_matter["globs"]:
-                errors.append("globsフィールドは空の配列にできません")
+            # globsフィールドの検証（ルールファイルの場合）
+            if "globs" in front_matter:
+                if not isinstance(front_matter["globs"], list):
+                    errors.append("globsフィールドは配列である必要があります")
+                elif not front_matter["globs"]:
+                    errors.append("globsフィールドは空の配列にできません")
 
     except Exception as e:
         errors.append(f"ファイルの検証中にエラーが発生しました: {str(e)}")
