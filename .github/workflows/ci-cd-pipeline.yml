@@ -1,0 +1,163 @@
+name: CI/CD Pipeline
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: "3.9"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+      - name: Run tests
+        run: |
+          pytest --cov=crules --cov-report=xml
+      - name: Upload coverage
+        uses: codecov/codecov-action@v2
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: "3.9"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install flake8 black isort mypy bandit
+      - name: Run linters
+        run: |
+          flake8 crules tests
+          black --check crules tests
+          isort --check-only crules tests
+          mypy crules
+          bandit -r crules
+
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: "3.9"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install safety pip-audit
+      - name: Check dependencies
+        run: |
+          safety check
+          pip-audit
+
+  deploy:
+    needs: [test, lint, security]
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: "3.9"
+      - name: Get previous version
+        id: get_previous_version
+        run: |
+          PREVIOUS_VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo "0.0.0")
+          echo "::set-output name=previous_version::$PREVIOUS_VERSION"
+          echo "PREVIOUS_VERSION=$PREVIOUS_VERSION" >> $GITHUB_ENV
+      - name: Update version
+        id: update_version
+        run: |
+          # バージョン番号の更新ロジック
+          NEW_VERSION=$(echo "0.1.${{ github.run_number }}" | sed 's/^0*//')
+          echo "::set-output name=version::$NEW_VERSION"
+          # バージョン番号をファイルに書き込む
+          echo "VERSION=$NEW_VERSION" >> $GITHUB_ENV
+
+          # __init__.pyファイルのバージョン番号を更新
+          sed -i "s/__version__ = \".*\"/__version__ = \"$NEW_VERSION\"/" crules/crules/__init__.py
+
+          # setup.pyのバージョン番号を更新
+          sed -i "s/version=\".*\"/version=\"$NEW_VERSION\"/" setup.py
+
+          # pyproject.tomlのバージョン番号を更新
+          sed -i "s/version = \".*\"/version = \"$NEW_VERSION\"/" pyproject.toml
+
+          # 変更をコミット
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add crules/crules/__init__.py setup.py pyproject.toml
+          git commit -m "Update version to $NEW_VERSION"
+          git push
+      - name: Generate changelog
+        run: |
+          # 変更履歴の生成ロジック
+          git log ${{ env.PREVIOUS_VERSION }}..HEAD --pretty=format:"- %s" > CHANGELOG.md
+      - name: Calculate hashes
+        run: |
+          # ハッシュ値の計算
+          find . -type f -not -path "*/\.*" -not -path "*/venv/*" | sort | xargs shasum -a 256 > hashes.txt
+      - name: Create GitHub Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ env.VERSION }}
+          release_name: Release v${{ env.VERSION }}
+          body: |
+            ## 変更内容
+
+            $(cat CHANGELOG.md)
+
+            ## ハッシュ値
+
+            ```
+            $(cat hashes.txt)
+            ```
+          draft: false
+          prerelease: false
+      - name: Upload Release Assets
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./hashes.txt
+          asset_name: hashes.txt
+          asset_content_type: text/plain
+      - name: Update Homebrew Formula
+        if: github.event_name == 'release'
+        run: |
+          # Homebrewフォーミュラの更新（必要な場合）
+          # このステップはHomebrewを使用する場合のみ必要
+      - name: Deploy to production
+        run: |
+          # 本番環境へのデプロイロジック
+      - name: Rollback on failure
+        if: failure()
+        run: |
+          # ロールバックロジック
+          echo "Deployment failed, rolling back..."
+          # 前バージョンへの切り替え
+          git checkout v${{ env.PREVIOUS_VERSION }}
+          # 通知の送信
+          if [ -n "${{ secrets.SLACK_WEBHOOK_URL }}" ]; then
+            curl -X POST -H 'Content-type: application/json' --data "{\"text\":\"Deployment failed, rolled back to v${{ env.PREVIOUS_VERSION }}\"}" ${{ secrets.SLACK_WEBHOOK_URL }}
+          fi

@@ -1,26 +1,24 @@
 # Changelog
 
-All notable changes to this project will be documented in this file.
+すべての重要な変更は、このファイルに記録されます。
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [0.1.0] - 2025-04-13
 
-## [Unreleased]
+### 追加
 
-### Added
+- プロジェクトルールとノートの管理機能
+- テンプレートディレクトリからのファイル配置機能
+- 編集済みファイルの配置機能
+- ルール一覧表示機能
+- ファイル検証機能
+- 競合処理機能
+- エラーハンドリング機能
+- 進捗表示機能
 
-- Initial project setup
-- Basic project structure
-- GitHub Actions workflow for automated releases
-- Conventional commits support
-- Changelog generation
+### 変更
 
-### Changed
+- なし
 
-- Updated Python version to 3.11
-- Improved project documentation
+### 修正
 
-### Fixed
-
-- Fixed GitHub Actions workflow dependencies
-- Added proper .gitignore file
+- なし

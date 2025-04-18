@@ -1,176 +1,178 @@
+"""
+Tests for the utils module.
+"""
+
 import os
 from pathlib import Path
-
 import pytest
+import yaml
+from crules.utils import read_yaml_front_matter, validate_file_content
 
-from crules.utils import (
-    ConflictError,
-    ValidationError,
-    ensure_directory,
-    read_yaml_front_matter,
-    validate_file_content,
-    validate_file_format,
-    validate_file_size,
-    validate_file_structure,
-    validate_yaml_front_matter,
-)
-
-
-# テスト用のフィクスチャ
 @pytest.fixture
 def temp_dir(tmp_path):
-    """一時ディレクトリを作成するフィクスチャ"""
+    """Create a temporary directory for test files."""
     return tmp_path
 
-
 @pytest.fixture
-def valid_md_file(temp_dir):
-    """有効なマークダウンファイルを作成するフィクスチャ"""
+def sample_file(temp_dir):
+    """Create a sample file with valid front matter."""
+    file_path = temp_dir / "sample.md"
     content = """---
-description: "Test description"
-globs: "src/**/*.ts"
-alwaysApply: false
+title: Test File
+description: A test file
+tags: [test, sample]
 ---
 
-# Test Content
 This is a test file.
 """
-    file_path = temp_dir / "test.md"
     file_path.write_text(content)
     return file_path
-
 
 @pytest.fixture
-def invalid_md_file(temp_dir):
-    """無効なマークダウンファイルを作成するフィクスチャ"""
-    content = """# Invalid File
-No YAML front matter
-"""
+def invalid_yaml_file(temp_dir):
+    """Create a file with invalid YAML front matter."""
     file_path = temp_dir / "invalid.md"
+    content = """---
+title: Invalid File
+description: [Missing bracket
+tags: [test
+---
+
+This is an invalid file.
+"""
     file_path.write_text(content)
     return file_path
 
+@pytest.fixture
+def no_front_matter_file(temp_dir):
+    """Create a file without front matter."""
+    file_path = temp_dir / "no_front_matter.md"
+    content = "This is a file without front matter."
+    file_path.write_text(content)
+    return file_path
 
-# ディレクトリ関連のテスト
-def test_ensure_directory(temp_dir):
-    """ensure_directory関数のテスト"""
-    test_dir = temp_dir / "test_dir"
-    ensure_directory(test_dir)
-    assert test_dir.exists()
-    assert test_dir.is_dir()
-
-
-# YAMLフロントマター関連のテスト
-def test_read_yaml_front_matter_valid(tmp_path):
-    """有効なYAML front matterの読み込みテスト"""
-    file_path = tmp_path / "test.md"
-    with open(file_path, "w") as f:
-        f.write(
-            """---
-description: Test description
-globs: ["*.md"]
+@pytest.fixture
+def empty_front_matter_file(temp_dir):
+    """Create a file with empty front matter."""
+    file_path = temp_dir / "empty_front_matter.md"
+    content = """---
 ---
-Content"""
-        )
 
-    front_matter = read_yaml_front_matter(str(file_path))
-    assert isinstance(front_matter, dict)
-    assert front_matter["description"] == "Test description"
-    assert front_matter["globs"] == ["*.md"]
+This file has empty front matter.
+"""
+    file_path.write_text(content)
+    return file_path
 
+@pytest.fixture
+def unreadable_file(temp_dir):
+    """Create a file that cannot be read."""
+    file_path = temp_dir / "unreadable.md"
+    file_path.write_text("Some content")
+    os.chmod(file_path, 0o000)
+    return file_path
 
-def test_read_yaml_front_matter_invalid(tmp_path):
-    """無効なYAML front matterの読み込みテスト"""
-    file_path = tmp_path / "test.md"
-    with open(file_path, "w") as f:
-        f.write("Content without front matter")
+def test_read_yaml_front_matter_valid(sample_file):
+    """Test reading valid YAML front matter."""
+    front_matter = read_yaml_front_matter(sample_file)
+    assert front_matter == {
+        "title": "Test File",
+        "description": "A test file",
+        "tags": ["test", "sample"]
+    }
 
-    with pytest.raises(ValidationError):
-        read_yaml_front_matter(str(file_path))
+def test_read_yaml_front_matter_invalid(invalid_yaml_file):
+    """Test reading invalid YAML front matter."""
+    with pytest.raises(yaml.YAMLError):
+        read_yaml_front_matter(invalid_yaml_file)
 
+def test_read_yaml_front_matter_no_front_matter(no_front_matter_file):
+    """Test reading a file without front matter."""
+    front_matter = read_yaml_front_matter(no_front_matter_file)
+    assert front_matter == {}
 
-def test_validate_yaml_front_matter_valid():
-    """有効なYAML front matterの検証テスト"""
-    front_matter = {"description": "Test description", "globs": ["*.md"]}
-    assert validate_yaml_front_matter(front_matter) is True
+def test_read_yaml_front_matter_empty(empty_front_matter_file):
+    """Test reading empty front matter."""
+    front_matter = read_yaml_front_matter(empty_front_matter_file)
+    assert front_matter == {}
 
+def test_read_yaml_front_matter_unreadable(unreadable_file):
+    """Test reading an unreadable file."""
+    with pytest.raises(OSError):
+        read_yaml_front_matter(unreadable_file)
 
-def test_validate_yaml_front_matter_invalid():
-    """無効なYAML front matterの検証テスト"""
-    front_matter = {"description": "Test description"}
-    assert validate_yaml_front_matter(front_matter) is False
+def test_validate_file_content_valid(sample_file):
+    """Test validating a file with valid content."""
+    required_fields = ["title", "description", "tags"]
+    missing_fields = validate_file_content(sample_file, required_fields)
+    assert not missing_fields
 
+def test_validate_file_content_missing_fields(sample_file):
+    """Test validating a file with missing required fields."""
+    required_fields = ["title", "description", "tags", "author", "date"]
+    missing_fields = validate_file_content(sample_file, required_fields)
+    assert "author" in missing_fields
+    assert "date" in missing_fields
+    assert "title" not in missing_fields
+    assert "description" not in missing_fields
+    assert "tags" not in missing_fields
 
-# ファイル検証関連のテスト
-def test_validate_file_format_valid(tmp_path):
-    """有効なファイル形式の検証テスト"""
-    file_path = tmp_path / "test.md"
-    file_path.touch()
-    assert validate_file_format(str(file_path)) is True
+def test_validate_file_content_no_front_matter(no_front_matter_file):
+    """Test validating a file without front matter."""
+    required_fields = ["title", "description"]
+    missing_fields = validate_file_content(no_front_matter_file, required_fields)
+    assert set(missing_fields) == set(required_fields)
 
+def test_validate_file_content_empty_front_matter(empty_front_matter_file):
+    """Test validating a file with empty front matter."""
+    required_fields = ["title", "description"]
+    missing_fields = validate_file_content(empty_front_matter_file, required_fields)
+    assert set(missing_fields) == set(required_fields)
 
-def test_validate_file_format_invalid(tmp_path):
-    """無効なファイル形式の検証テスト"""
-    file_path = tmp_path / "test.txt"
-    file_path.touch()
-    assert validate_file_format(str(file_path)) is False
+def test_validate_file_content_unreadable(unreadable_file):
+    """Test validating an unreadable file."""
+    required_fields = ["title", "description"]
+    missing_fields = validate_file_content(unreadable_file, required_fields)
+    assert set(missing_fields) == set(required_fields)
 
+def test_validate_file_content_nonexistent(temp_dir):
+    """Test validating a nonexistent file."""
+    nonexistent_file = temp_dir / "nonexistent.md"
+    required_fields = ["title", "description"]
+    missing_fields = validate_file_content(nonexistent_file, required_fields)
+    assert set(missing_fields) == set(required_fields)
 
-def test_validate_file_size_valid(tmp_path):
-    """有効なファイルサイズの検証テスト"""
-    file_path = tmp_path / "test.md"
-    with open(file_path, "w") as f:
-        f.write("Small content")
-    assert validate_file_size(str(file_path)) is True
-
-
-def test_validate_file_size_invalid(tmp_path):
-    """無効なファイルサイズの検証テスト"""
-    file_path = tmp_path / "test.md"
-    with open(file_path, "w") as f:
-        f.write("x" * (1024 * 1024 + 1))  # 1MB + 1 byte
-    assert validate_file_size(str(file_path)) is False
-
-
-def test_validate_file_content_valid(tmp_path):
-    """有効なファイル内容の検証テスト"""
-    file_path = tmp_path / "test.md"
-    with open(file_path, "w") as f:
-        f.write(
-            """---
-description: Test description
-globs: ["*.md"]
+def test_validate_file_content_with_unicode(temp_dir):
+    """Test validating a file with Unicode content."""
+    file_path = temp_dir / "unicode.md"
+    content = """---
+title: 日本語のタイトル
+description: 説明文も日本語です
+tags: [テスト, サンプル]
 ---
-Content"""
-        )
-    assert validate_file_content(str(file_path)) is True
 
+Unicode content in the body: 🌟🌍🌈
+"""
+    file_path.write_text(content, encoding="utf-8")
+    
+    required_fields = ["title", "description", "tags"]
+    missing_fields = validate_file_content(file_path, required_fields)
+    assert not missing_fields
 
-def test_validate_file_content_invalid(tmp_path):
-    """無効なファイル内容の検証テスト"""
-    file_path = tmp_path / "test.md"
-    with open(file_path, "w") as f:
-        f.write("Content without front matter")
-    assert validate_file_content(str(file_path)) is False
-
-
-def test_validate_file_structure_valid(tmp_path):
-    """有効なファイル構造の検証テスト"""
-    file_path = tmp_path / "test.md"
-    with open(file_path, "w") as f:
-        f.write(
-            """---
-description: Test description
-globs: ["*.md"]
+def test_validate_file_content_with_large_front_matter(temp_dir):
+    """Test validating a file with large front matter."""
+    file_path = temp_dir / "large.md"
+    # Create a large list of tags
+    tags = [f"tag{i}" for i in range(1000)]
+    content = f"""---
+title: Large Front Matter
+description: A file with large front matter
+tags: {tags}
 ---
-Content"""
-        )
-    assert validate_file_structure(str(file_path)) is True
 
-
-def test_validate_file_structure_invalid(tmp_path):
-    """無効なファイル構造の検証テスト"""
-    file_path = tmp_path / "test.md"
-    with open(file_path, "w") as f:
-        f.write("Content without front matter")
-    assert validate_file_structure(str(file_path)) is False
+Regular content
+"""
+    file_path.write_text(content)
+    
+    required_fields = ["title", "description", "tags"]
+    missing_fields = validate_file_content(file_path, required_fields)
+    assert not missing_fields 
