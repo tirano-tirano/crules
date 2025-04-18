@@ -13,6 +13,7 @@ class FileOperationError(CrulesError):
     """
     ファイル操作に関連するエラーを表すクラスです。
     """
+
     pass
 
 

@@ -24,6 +24,7 @@ DEFAULT_CONFIG = {
     "SECRET_KEY": "default-secret-key",
 }
 
+
 def get_env(key: str, default: Any = None) -> Any:
     """
     環境変数を取得します。
@@ -36,6 +37,7 @@ def get_env(key: str, default: Any = None) -> Any:
         環境変数の値
     """
     return os.getenv(key, default)
+
 
 def get_config(key: str, default: Any = None) -> Any:
     """
@@ -52,9 +54,10 @@ def get_config(key: str, default: Any = None) -> Any:
     value = get_env(key)
     if value is not None:
         return value
-    
+
     # デフォルト設定から取得
     return DEFAULT_CONFIG.get(key, default)
+
 
 def get_all_config() -> Dict[str, Any]:
     """
@@ -64,11 +67,11 @@ def get_all_config() -> Dict[str, Any]:
         すべての設定を含む辞書
     """
     config = DEFAULT_CONFIG.copy()
-    
+
     # 環境変数で上書き
     for key in config:
         value = get_env(key)
         if value is not None:
             config[key] = value
-    
-    return config 
+
+    return config

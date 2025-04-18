@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 def init_command(
     project_dir: Union[str, Path],
     template_dir: Optional[Union[str, Path]] = None,
-    force: bool = False
+    force: bool = False,
 ) -> None:
     """
     プロジェクトを初期化します。
@@ -39,7 +39,9 @@ def init_command(
     """
     try:
         project_path = Path(project_dir)
-        template_path = Path(template_dir) if template_dir else get_default_template_dir()
+        template_path = (
+            Path(template_dir) if template_dir else get_default_template_dir()
+        )
 
         # プロジェクトディレクトリの作成
         project_path.mkdir(parents=True, exist_ok=True)
@@ -78,7 +80,9 @@ def init_command(
         raise ValidationError(error_msg)
 
 
-def deploy_command(template_dir: str, target_dir: str = None, force: bool = False) -> bool:
+def deploy_command(
+    template_dir: str, target_dir: str = None, force: bool = False
+) -> bool:
     """
     テンプレートをデプロイします。
 
@@ -232,6 +236,7 @@ def tree_command(template_dir: Optional[str] = None) -> str:
 
 class ValidationError(Exception):
     """ファイル検証時のエラーを表すクラス"""
+
     pass
 
 
@@ -245,16 +250,16 @@ def validate_rule_file(file_path: Path) -> None:
         ValidationError: 検証に失敗した場合
     """
     try:
-        content = file_path.read_text(encoding='utf-8')
-        if not content.startswith('---'):
+        content = file_path.read_text(encoding="utf-8")
+        if not content.startswith("---"):
             raise ValidationError(f"{file_path}: YAMLフロントマターがありません")
 
         # YAMLフロントマターを抽出
-        _, yaml_content, _ = content.split('---', 2)
+        _, yaml_content, _ = content.split("---", 2)
         front_matter = yaml.safe_load(yaml_content)
 
         # 必須フィールドの確認
-        required_fields = ['title', 'description', 'tags']
+        required_fields = ["title", "description", "tags"]
         for field in required_fields:
             if field not in front_matter:
                 raise ValidationError(f"{file_path}: 必須フィールド '{field}' がありません")
@@ -276,7 +281,7 @@ def validate_note_file(file_path: Path) -> bool:
     """
     try:
         content = file_path.read_text()
-        if not content.startswith('---'):
+        if not content.startswith("---"):
             logger.error(f"{file_path}: YAMLフロントマターがありません")
             return False
         return True
@@ -293,7 +298,7 @@ def validate_command(path: str) -> int:
         path: 検証するプロジェクトのパス
 
     Returns:
-        int: 
+        int:
             0: エラーなし
             1: エラーあり（ルールファイルのエラー、空のファイル、notesディレクトリが存在しない場合など）
             2: 警告あり（その他の警告）
@@ -320,7 +325,7 @@ def validate_command(path: str) -> int:
 
     for rule_file in rule_files:
         try:
-            content = rule_file.read_text(encoding='utf-8')
+            content = rule_file.read_text(encoding="utf-8")
             if not content.strip():
                 logging.error(f"{rule_file.name}: ファイルが空です")
                 has_errors = True
@@ -347,7 +352,7 @@ def validate_command(path: str) -> int:
         else:
             for note_file in note_files:
                 try:
-                    content = note_file.read_text(encoding='utf-8')
+                    content = note_file.read_text(encoding="utf-8")
                     if not content.strip():
                         logging.error(f"{note_file.name}: ファイルが空です")
                         has_errors = True
@@ -387,9 +392,9 @@ def validate_file_content(file_path: Path, required_fields: List[str]) -> List[s
     errors = []
     try:
         # ファイル名の検証
-        if ' ' in file_path.name:
+        if " " in file_path.name:
             errors.append("ファイル名にスペースが含まれています")
-        if any(c in file_path.name for c in '@#$%^&*'):
+        if any(c in file_path.name for c in "@#$%^&*"):
             errors.append("ファイル名に特殊文字が含まれています")
 
         with open(file_path, "r", encoding="utf-8") as f:
@@ -401,7 +406,9 @@ def validate_file_content(file_path: Path, required_fields: List[str]) -> List[s
             return errors
 
         # 必須フィールドの検証
-        missing_fields = [field for field in required_fields if field not in front_matter]
+        missing_fields = [
+            field for field in required_fields if field not in front_matter
+        ]
         if missing_fields:
             errors.append(f"必須フィールドが欠けています: {', '.join(missing_fields)}")
 
