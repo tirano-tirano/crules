@@ -15,93 +15,91 @@ from pathlib import Path
 from crules.commands import validate_command
 
 
-def create_test_file(path: Path, content: str):
+def create_test_file(path: Path, content: str = "") -> None:
     """テストファイルを作成するヘルパー関数"""
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(content)
 
 
-def create_test_structure(tmp_path: Path, rule_content: str = None, note_content: str = None):
-    """テストディレクトリ構造を作成するヘルパー関数"""
+def create_test_structure(tmp_path: Path, rule_content: str = "", note_content: str = "") -> None:
+    """テスト用のディレクトリ構造を作成するヘルパー関数"""
     if rule_content:
-        create_test_file(tmp_path / "rules" / "test_rule.md", rule_content)
+        create_test_file(tmp_path / "rules" / "test_rule.mdc", rule_content)
     if note_content:
         create_test_file(tmp_path / "notes" / "test_note.md", note_content)
 
 
+@pytest.fixture(scope="function")
+def temp_dir():
+    """一時ディレクトリを作成し、テスト終了後に確実に削除するフィクスチャ"""
+    temp_dir = tempfile.mkdtemp()
+    yield Path(temp_dir)
+    try:
+        shutil.rmtree(temp_dir, ignore_errors=True)
+    except Exception as e:
+        print(f"Warning: Failed to cleanup temporary directory: {e}")
+
+
 @pytest.fixture(autouse=True)
-def cleanup_test_dirs(tmp_path):
-    """テスト実行後のクリーンアップを行うフィクスチャ"""
+def cleanup_test_dirs(temp_dir):
+    """テスト終了後に一時ディレクトリを確実に削除するフィクスチャ"""
     yield
-    # テスト実行後に一時ディレクトリを強制的に削除
-    if tmp_path.exists():
-        for item in tmp_path.glob("**/*"):
-            if item.is_file():
-                item.unlink()
-            elif item.is_dir():
-                shutil.rmtree(item, ignore_errors=True)
-        shutil.rmtree(tmp_path, ignore_errors=True)
+    try:
+        if temp_dir.exists():
+            for item in temp_dir.glob('**/*'):
+                if item.is_file():
+                    item.unlink()
+                elif item.is_dir():
+                    shutil.rmtree(item, ignore_errors=True)
+            shutil.rmtree(temp_dir, ignore_errors=True)
+    except Exception as e:
+        print(f"Warning: Failed to cleanup temporary directory: {e}")
 
 
-def test_validate_command_success(tmp_path):
-    """正常なルールとノートファイルの検証"""
-    rule_content = """---
-title: テストルール
-description: これはテストです
----
-ルールの内容"""
-    note_content = "これはテストノートです"
-    create_test_structure(tmp_path, rule_content, note_content)
-
-    result = validate_command(str(tmp_path))
+def test_validate_command_success(temp_dir):
+    """正常なルールとノートファイルが存在する場合のテスト"""
+    create_test_structure(
+        temp_dir,
+        rule_content="---\ntitle: Test Rule\n---\nTest content",
+        note_content="---\ntitle: Test Note\n---\nTest content"
+    )
+    result = validate_command(temp_dir)
     assert result == 0
 
 
-def test_validate_command_empty_directories(tmp_path):
-    """空のディレクトリ構造の検証"""
-    create_test_structure(tmp_path)
-    result = validate_command(str(tmp_path))
-    assert result == 1  # rulesディレクトリが存在しないためエラー
+def test_validate_command_empty_directories(temp_dir):
+    """空のディレクトリ構造の場合のテスト"""
+    result = validate_command(temp_dir)
+    assert result == 1
 
 
-def test_validate_command_with_rules_only(tmp_path):
-    """rulesディレクトリのみ存在する場合の検証"""
-    rule_content = """---
-title: テストルール
-description: これはテストです
----
-ルールの内容"""
-    create_test_structure(tmp_path, rule_content)
-
-    result = validate_command(str(tmp_path))
-    assert result == 1  # notesディレクトリが存在しないためエラー
+def test_validate_command_with_rules_only(temp_dir):
+    """ルールディレクトリのみが存在する場合のテスト"""
+    create_test_structure(temp_dir, rule_content="---\ntitle: Test Rule\n---\nTest content")
+    result = validate_command(temp_dir)
+    assert result == 1
 
 
-def test_validate_command_with_invalid_rule(tmp_path):
-    """無効なルールファイルの検証"""
-    invalid_content = "これは無効なルールファイルです"
-    create_test_structure(tmp_path, invalid_content)
-
-    result = validate_command(str(tmp_path))
-    assert result == 1  # YAMLフロントマターがないためエラー
-
-
-def test_validate_command_with_empty_rule(tmp_path):
-    """空のルールファイルの検証"""
-    create_test_structure(tmp_path, "")
-    
-    result = validate_command(str(tmp_path))
-    assert result == 1  # 空のファイルはエラー
+def test_validate_command_with_invalid_rule(temp_dir):
+    """無効なルールファイルが存在する場合のテスト"""
+    create_test_structure(
+        temp_dir,
+        rule_content="Invalid content without YAML front matter",
+        note_content="---\ntitle: Test Note\n---\nTest content"
+    )
+    result = validate_command(temp_dir)
+    assert result == 1
 
 
-def test_validate_command_with_empty_note(tmp_path):
-    """空のノートファイルの検証"""
-    rule_content = """---
-title: テストルール
-description: これはテストです
----
-ルールの内容"""
-    create_test_structure(tmp_path, rule_content, "")
-    
-    result = validate_command(str(tmp_path))
-    assert result == 1  # 空のノートファイルはエラー
+def test_validate_command_with_empty_rule(temp_dir):
+    """空のルールファイルが存在する場合のテスト"""
+    create_test_structure(temp_dir, rule_content="", note_content="---\ntitle: Test Note\n---\nTest content")
+    result = validate_command(temp_dir)
+    assert result == 1
+
+
+def test_validate_command_with_empty_note(temp_dir):
+    """空のノートファイルが存在する場合のテスト"""
+    create_test_structure(temp_dir, rule_content="---\ntitle: Test Rule\n---\nTest content", note_content="")
+    result = validate_command(temp_dir)
+    assert result == 1
